@@ -8,11 +8,9 @@
 #include "scope.hpp"
 
 // Root files
-#include "TApplication.h"
 #include "TSystem.h"
 #include "TStyle.h"
 #include "TMath.h"
-#include "TCanvas.h"
 #include "TGraph.h"
 #include "TH2F.h"
 #include "TAxis.h"
@@ -82,7 +80,7 @@ void scopeUnpacker::ProcessRawEvent(ScanInterface *addr_/*=NULL*/){
 		if(!running)
 			break;
 	
-		//Get the first event int he FIFO.
+		//Get the first event in the FIFO.
 		current_event = rawEvent.front();
 		rawEvent.pop_front();
 
@@ -117,7 +115,7 @@ void scopeUnpacker::ProcessRawEvent(ScanInterface *addr_/*=NULL*/){
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Default constructor.
-scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
+scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : RootScanner() {
 	need_graph_update = false;
 	resetGraph_ = false;
 	acqRun_ = true;
@@ -136,12 +134,6 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	delay_ = 2;
 	num_displayed = 0;
 	time(&last_trace);
-	
-	// Variables for root graphics
-	rootapp = new TApplication("scope", 0, NULL);
-	gSystem->Load("libTree");
-	
-	canvas = new TCanvas("scope_canvas", "scopeScanner");
 	
 	graph = new TGraph();
 	cfdGraph = new TGraph();
@@ -163,8 +155,6 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 
 /// Destructor.
 scopeScanner::~scopeScanner(){
-	canvas->Close();
-	delete canvas;
 	delete graph;
 	delete cfdGraph;
 	delete cfdLine;
@@ -215,10 +205,10 @@ void scopeScanner::Plot(){
 	static bool userZoom[2];
 
 	//Get the user zoom settings.
-	userZoomVals[0][0] = canvas->GetUxmin();
-	userZoomVals[0][1] = canvas->GetUxmax();
-	userZoomVals[1][0] = canvas->GetUymin();
-	userZoomVals[1][1] = canvas->GetUymax();
+	userZoomVals[0][0] = GetCanvas()->GetUxmin();
+	userZoomVals[0][1] = GetCanvas()->GetUxmax();
+	userZoomVals[1][0] = GetCanvas()->GetUymin();
+	userZoomVals[1][1] = GetCanvas()->GetUymax();
 
 	if(chanEvents_.front()->size != x_vals.size()){ // The length of the trace has changed.
 		resetGraph_ = true;
@@ -343,7 +333,7 @@ void scopeScanner::Plot(){
 		hist->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
 		hist->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
 
-		canvas->Update();	
+		GetCanvas()->Update();	
 		TPaveStats* stats = (TPaveStats*) prof->GetListOfFunctions()->FindObject("stats");
 		if (stats) {
 			stats->SetX1NDC(0.55);
@@ -358,7 +348,7 @@ void scopeScanner::Plot(){
 	}
 
 	// Update the canvas.
-	canvas->Update();
+	GetCanvas()->Update();
 
 	// Save the TGraph to a file.
 	if (saveFile_ != "") {
@@ -574,7 +564,7 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 			if(performFit_){
 				std::cout << msgHeader << "Disabling root fitting.\n"; 
 				delete graph->GetListOfFunctions()->FindObject(paulauskasFunc->GetName());
-				canvas->Update();
+				GetCanvas()->Update();
 				performFit_ = false;
 			}
 			else{ std::cout << msgHeader << "Fitting is not enabled.\n"; }
@@ -649,12 +639,12 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 		}
 	}
 	else if(cmd_ == "log"){
-		if(canvas->GetLogy()){ 
-			canvas->SetLogy(0);
+		if(GetCanvas()->GetLogy()){ 
+			GetCanvas()->SetLogy(0);
 			std::cout << msgHeader << "y-axis set to linear.\n"; 
 		}
 		else{ 
-			canvas->SetLogy(1); 
+			GetCanvas()->SetLogy(1); 
 			std::cout << msgHeader << "y-axis set to log.\n"; 
 		}
 	}
@@ -665,17 +655,6 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 	else{ return false; }
 
 	return true;
-}
-
-/** IdleTask is called whenever a scan is running in shared
-  * memory mode, and a spill has yet to be received. This method may
-  * be used to update things which need to be updated every so often
-  * (e.g. a root TCanvas) when working with a low data rate. 
-  * \return Nothing.
-  */
-void scopeScanner::IdleTask(){
-	gSystem->ProcessEvents();
-	usleep(SLEEP_WAIT);
 }
 
 int main(int argc, char *argv[]){

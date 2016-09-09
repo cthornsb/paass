@@ -1,8 +1,8 @@
 if(USE_ROOT AND BUILD_SCOPE)
-	set(SCOPE_SOURCES scope.cpp)
-	add_executable(scope ${SCOPE_SOURCES})
+	add_executable(scope scope.cpp RootScanner.cpp)
 	target_link_libraries(scope ScanStatic ${ROOT_LIBRARIES})
-    install(TARGETS scope DESTINATION bin)
+
+	install(TARGETS scope DESTINATION bin)
 endif(USE_ROOT AND BUILD_SCOPE)
 
 if(BUILD_SKELETON)
