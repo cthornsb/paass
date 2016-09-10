@@ -196,37 +196,21 @@ void scopeScanner::ResetGraph(unsigned int size) {
 }
 
 void scopeScanner::Plot(){
+	static float histAxis[2][2];
+
 	if(chanEvents_.size() < numAvgWaveforms_)
 		return;
-
-	///The limits of the vertical axis
-	static float axisVals[2][2]; //The max and min values of the graph, first index is the axis, second is the min / max
-	static float userZoomVals[2][2];
-	static bool userZoom[2];
-
-	//Get the user zoom settings.
-	userZoomVals[0][0] = GetCanvas()->GetUxmin();
-	userZoomVals[0][1] = GetCanvas()->GetUxmax();
-	userZoomVals[1][0] = GetCanvas()->GetUymin();
-	userZoomVals[1][1] = GetCanvas()->GetUymax();
 
 	if(chanEvents_.front()->size != x_vals.size()){ // The length of the trace has changed.
 		resetGraph_ = true;
 	}
 	if (resetGraph_) {
 		ResetGraph(chanEvents_.front()->size);
+		ResetZoom();
 		for (int i=0;i<2;i++) {
-			axisVals[i][0] = 1E9;
-			axisVals[i][1] = -1E9;
-			userZoomVals[i][0] = 1E9;
-			userZoomVals[i][1] = -1E9;
-			userZoom[i] = false;
-		}
-	}
-
-	//Determine if the user had zoomed or unzoomed.
-	for (int i=0; i<2; i++) {
-		userZoom[i] =  (userZoomVals[i][0] != axisVals[i][0] || userZoomVals[i][1] != axisVals[i][1]);
+			histAxis[i][0] = 1E9;
+			histAxis[i][1] = -1E9;
+		}		
 	}
 
 	//For a waveform pulse we use a graph.
@@ -237,23 +221,7 @@ void scopeScanner::Plot(){
 			index++;
 		}
 
-		//Get and set the updated graph limits.
-		if (graph->GetXaxis()->GetXmin() < axisVals[0][0]) axisVals[0][0] = graph->GetXaxis()->GetXmin(); 
-		if (graph->GetXaxis()->GetXmax() > axisVals[0][1]) axisVals[0][1] = graph->GetXaxis()->GetXmax(); 
-		graph->GetXaxis()->SetLimits(axisVals[0][0], axisVals[0][1]);
-		
-		if (graph->GetYaxis()->GetXmin() < axisVals[1][0]) axisVals[1][0] = graph->GetYaxis()->GetXmin(); 
-		if (graph->GetYaxis()->GetXmax() > axisVals[1][1]) axisVals[1][1] = graph->GetYaxis()->GetXmax(); 
-		graph->GetYaxis()->SetLimits(axisVals[1][0], axisVals[1][1]);
-
-		//Set the users zoom window.
-		for (int i = 0; i < 2; i++) {
-			if (!userZoom[i]) {
-				for (int j = 0; j < 2; j++) userZoomVals[i][j] = axisVals[i][j];
-			}
-		}
-		graph->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
-		graph->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
+		UpdateZoom(graph->GetXaxis(), graph->GetYaxis());
 
 		graph->Draw("AP0");
 
@@ -267,7 +235,7 @@ void scopeScanner::Plot(){
 			// Draw the cfd waveform.
 			for(size_t cfdIndex = 0; cfdIndex < chanEvents_.front()->size; cfdIndex++)
 				cfdGraph->SetPoint((int)cfdIndex, x_vals[cfdIndex], chanEvents_.front()->cfdvals[cfdIndex] + chanEvents_.front()->baseline);
-			cfdLine->DrawLine(cfdCrossing*ADC_TIME_STEP, userZoomVals[1][0], cfdCrossing*ADC_TIME_STEP, userZoomVals[1][1]);
+			cfdLine->DrawLine(cfdCrossing*ADC_TIME_STEP, GetCanvas()->GetUymin(), cfdCrossing*ADC_TIME_STEP, GetCanvas()->GetUymax());
 			cfdGraph->Draw("LSAME");
 		}
 
@@ -286,23 +254,15 @@ void scopeScanner::Plot(){
 			float evtMax = *std::max_element(evt->event->adcTrace.begin(), evt->event->adcTrace.end());
 			evtMin -= fabs(0.1 * evtMax);
 			evtMax += fabs(0.1 * evtMax);
-			if (evtMin < axisVals[1][0]) axisVals[1][0] = evtMin;
-			if (evtMax > axisVals[1][1]) axisVals[1][1] = evtMax;
-		}
-
-		//Set the users zoom window.
-		for (int i=0; i<2; i++) {
-			if (!userZoom[i]) {
-				for (int j=0; j<2; j++) 
-					userZoomVals[i][j] = axisVals[i][j];
-			}
+			if (evtMin < histAxis[1][0]) histAxis[1][0] = evtMin;
+			if (evtMax > histAxis[1][1]) histAxis[1][1] = evtMax;
 		}
 
 		//Reset the histogram
 		hist->Reset();
 		
 		//Rebin the histogram
-		hist->SetBins(x_vals.size(), x_vals.front(), x_vals.back() + ADC_TIME_STEP, axisVals[1][1] - axisVals[1][0], axisVals[1][0], axisVals[1][1]);
+		hist->SetBins(x_vals.size(), x_vals.front(), x_vals.back() + ADC_TIME_STEP, histAxis[1][1] - histAxis[1][0], histAxis[1][0], histAxis[1][1]);
 
 		//Fill the histogram
 		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
@@ -330,8 +290,7 @@ void scopeScanner::Plot(){
 		hist->Draw("COLZ");		
 		prof->Draw("SAMES");
 
-		hist->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
-		hist->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
+		UpdateZoom(hist->GetXaxis(),hist->GetYaxis());
 
 		GetCanvas()->Update();	
 		TPaveStats* stats = (TPaveStats*) prof->GetListOfFunctions()->FindObject("stats");
