@@ -1,6 +1,7 @@
 #We will always build this since it includes a static lib for the rest
 add_subdirectory(ScanLib)
 
+include_directories(ScanLib/include)
 #Build utilities.
 add_subdirectory(util)
 
