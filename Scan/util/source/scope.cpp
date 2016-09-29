@@ -221,7 +221,7 @@ void scopeScanner::Plot(){
 			index++;
 		}
 
-		UpdateZoom(graph->GetXaxis(), graph->GetYaxis());
+		UpdateZoom();
 
 		graph->Draw("AP0");
 
@@ -290,7 +290,7 @@ void scopeScanner::Plot(){
 		hist->Draw("COLZ");		
 		prof->Draw("SAMES");
 
-		UpdateZoom(hist->GetXaxis(),hist->GetYaxis());
+		UpdateZoom();
 
 		GetCanvas()->Update();	
 		TPaveStats* stats = (TPaveStats*) prof->GetListOfFunctions()->FindObject("stats");
