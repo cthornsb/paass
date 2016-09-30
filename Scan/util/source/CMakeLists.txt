@@ -4,7 +4,7 @@ if(USE_ROOT AND BUILD_SCOPE)
 
 	root_generate_dictionary(HistScannerDictionary HistScannerChanData.hpp LINKDEF HistScannerLinkDef.h)
 	add_executable(hist RootScanner.cpp HistScanner.cpp HistUnpacker.cpp HistScannerDictionary.cxx hist.cpp)
-	target_link_libraries(hist ScanStatic ${ROOT_LIBRARIES})
+	target_link_libraries(hist ScanStatic ${ROOT_LIBRARIES} -lTreePlayer)
 
 	install(TARGETS scope hist DESTINATION bin)
 endif(USE_ROOT AND BUILD_SCOPE)
