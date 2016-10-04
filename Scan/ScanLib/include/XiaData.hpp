@@ -24,8 +24,8 @@ public:
     size_t traceLength;
     unsigned short *adcTrace; /// ADC trace capture.
     
-    static const int numQdcs = 8; /// Number of QDCs onboard.
-    unsigned int qdcValue[numQdcs]; /// QDCs from onboard.
+    size_t numQdcs; /// Number of QDCs onboard.
+    unsigned int *qdcValue; /// QDCs from onboard.
     
     unsigned int slotNum; ///Slot number
     unsigned int modNum; /// Module number.
@@ -63,6 +63,12 @@ public:
 	/// Fill the trace by reading from a character array.
 	void copyTrace(char *ptr_);
 
+	/// Fill the trace by reading from a character array.
+	void copyTrace(char *ptr_, const size_t &size_);	
+
+	/// Fill the QDC array by reading a character array.
+	void copyQDCs(char *ptr_, const size_t &size_);
+
     /// Return true if the time of arrival for rhs is later than that of lhs.
     static bool compareTime(XiaData *lhs, XiaData *rhs){ return (lhs->time < rhs->time); }
     
@@ -70,10 +76,16 @@ public:
     static bool compareChannel(XiaData *lhs, XiaData *rhs){ return ((lhs->modNum*lhs->chanNum) < (rhs->modNum*rhs->chanNum)); }
     
     /// Return one of the onboard qdc values.
-    unsigned int getQdcValue(int id){ return (id < 0 || id >= numQdcs ? -1 : qdcValue[id]); }
+    unsigned int getQdcValue(const size_t &id){ return (id < 0 || id >= numQdcs ? -1 : qdcValue[id]); }
     
     /// Clear all variables.
     void clear();
+    
+    /// Delete the trace.
+    void clearTrace();
+    
+    /// Delete the QDC array.
+    void clearQDCs();
     
     /// Write a pixie style event to a binary output file.
     int writeRaw(std::ofstream &file_);

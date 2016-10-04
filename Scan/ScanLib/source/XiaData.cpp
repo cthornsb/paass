@@ -10,19 +10,20 @@
 /// Default constructor.
 XiaData::XiaData(){
 	adcTrace = NULL;
+	qdcValue = NULL;
 	clear();
 }
 
 /// Constructor from a pointer to another XiaData.
 XiaData::XiaData(XiaData *other_){
-	adcTrace = other_->adcTrace;
+	if(other_->traceLength > 0)
+		copyTrace((char *)other_->adcTrace, other_->traceLength);
+
+	if(other_->numQdcs > 0)
+		copyQDCs((char *)other_->qdcValue, other_->numQdcs);
 
 	energy = other_->energy; 
 	time = other_->time;
-	
-	for(int i = 0; i < numQdcs; i++){
-		qdcValue[i] = other_->qdcValue[i];
-	}
 
 	modNum = other_->modNum;
 	chanNum = other_->chanNum;
@@ -40,12 +41,17 @@ XiaData::XiaData(XiaData *other_){
 }
 
 XiaData::~XiaData(){
-	if(adcTrace != NULL)
-		delete[] adcTrace;
+	clearTrace();
+	clearQDCs();
 }
 
 void XiaData::reserve(const size_t &size_){
-	if(size_ == 0 || traceLength != 0) return;
+	if(size_ == 0) return;
+	else if(traceLength != 0){
+		if(size_ == traceLength)
+			return;
+		clearTrace();
+	}
 	traceLength = size_;
 	adcTrace = new unsigned short[traceLength];
 }
@@ -62,13 +68,27 @@ void XiaData::copyTrace(char *ptr_){
 	memcpy((char *)adcTrace, ptr_, traceLength*2);
 }
 
+/// Fill the trace by reading from a character array.
+void XiaData::copyTrace(char *ptr_, const size_t &size_){
+	reserve(size_);
+	copyTrace(ptr_);
+}
+
+/// Fill the QDC array by reading a character array.
+void XiaData::copyQDCs(char *ptr_, const size_t &size_){
+	if(size_ == 0) return;
+	else if(numQdcs == 0 || size_ != numQdcs){
+		clearQDCs();
+		numQdcs = size_;
+		qdcValue = new unsigned int[numQdcs];
+	}
+	memcpy((char *)qdcValue, ptr_, numQdcs*4);
+}
+
 void XiaData::clear(){
 	energy = 0.0; 
 	time = 0.0;
 	
-	for(int i = 0; i < numQdcs; i++)
-		qdcValue[i] = 0;
-
 	modNum = 0;
 	chanNum = 0;
 	trigTime = 0;
@@ -83,11 +103,26 @@ void XiaData::clear(){
 	cfdForceTrig = false; 
 	cfdTrigSource = false; 
 	
+	clearTrace();
+	clearQDCs();
+}
+
+/// Delete the trace.
+void XiaData::clearTrace(){
 	if(adcTrace != NULL)
 		delete[] adcTrace;
 	
 	traceLength = 0;
 	adcTrace = NULL;
+}
+
+/// Delete the QDC array.
+void XiaData::clearQDCs(){
+	if(qdcValue != NULL)
+		delete[] qdcValue;
+	
+	numQdcs = 0;
+	qdcValue = NULL;
 }
 
 /// Write a pixie style event to a binary output file.

@@ -274,12 +274,8 @@ int Unpacker::ReadBuffer(unsigned int *buf, unsigned long &bufLen){
 				// trailing, leading, gap, baseline
 			}
 
-			if(headerLength >= 12){
-				int offset = headerLength - 8;
-				for (int i=0; i < currentEvt->numQdcs; i++){
-					currentEvt->qdcValue[i] = buf[offset + i];
-				}
-			}	 
+			if(headerLength >= 12) // Copy the QDCs.
+				currentEvt->copyQDCs((char *)&buf[headerLength - 8], 8);
 
 			// One last check
 			if( traceLength / 2 + headerLength != eventLength ){
@@ -317,8 +313,6 @@ int Unpacker::ReadBuffer(unsigned int *buf, unsigned long &bufLen){
 			buf += headerLength;
 			// Check if trace data follows the channel header
 			if( traceLength > 0 ){
-				currentEvt->reserve(traceLength);
-
 				/*if(currentEvt->saturatedBit)
 					currentEvt->trace.SetValue("saturation", 1);*/
 
@@ -326,7 +320,7 @@ int Unpacker::ReadBuffer(unsigned int *buf, unsigned long &bufLen){
 					lastVirtualChannel->assign(0);
 				}
 				// Read the trace data (2-bytes per sample, i.e. 2 samples per word)
-				currentEvt->copyTrace((char *)buf);
+				currentEvt->copyTrace((char *)buf, traceLength);
 				buf += traceLength / 2;
 			}
  
