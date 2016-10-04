@@ -21,7 +21,8 @@ public:
     double energy; /// Raw pixie energy.
     double time; /// Raw pixie event time. Measured in filter clock ticks (8E-9 Hz for RevF).
     
-    std::vector<int> adcTrace; /// ADC trace capture.
+    size_t traceLength;
+    unsigned short *adcTrace; /// ADC trace capture.
     
     static const int numQdcs = 8; /// Number of QDCs onboard.
     unsigned int qdcValue[numQdcs]; /// QDCs from onboard.
@@ -57,10 +58,10 @@ public:
     void reserve(const size_t &size_);
     
     /// Fill the trace vector with a specified value.
-    void assign(const size_t &size_, const int &input_);
-    
-    /// Push back the trace vector with a value.
-    void push_back(const int &input_); 
+    void assign(const unsigned short &input_);
+
+	/// Fill the trace by reading from a character array.
+	void copyTrace(char *ptr_);
 
     /// Return true if the time of arrival for rhs is later than that of lhs.
     static bool compareTime(XiaData *lhs, XiaData *rhs){ return (lhs->time < rhs->time); }
@@ -73,6 +74,9 @@ public:
     
     /// Clear all variables.
     void clear();
+    
+    /// Write a pixie style event to a binary output file.
+    int writeRaw(std::ofstream &file_);
 };
 
 class ChannelEvent{

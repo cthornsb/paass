@@ -87,12 +87,12 @@ void scopeUnpacker::ProcessRawEvent(ScanInterface *addr_/*=NULL*/){
 		rawEvent.pop_front();
 
 		// Safety catches for null event or empty adcTrace.
-		if(!current_event || current_event->adcTrace.empty()){
+		if(!current_event || current_event->traceLength == 0){
 			continue;
 		}
 
 		// Pass this event to the correct processor
-		int maximum = *std::max_element(current_event->adcTrace.begin(),current_event->adcTrace.end());
+		int maximum = *std::max_element(current_event->adcTrace, current_event->adcTrace+current_event->traceLength);
 		if(current_event->modNum == mod_ && current_event->chanNum == chan_){  
 			//Check threhsold.
 			if (maximum < threshLow_) {
@@ -243,7 +243,7 @@ void scopeScanner::Plot(){
 	if (numAvgWaveforms_ == 1) {
 		int index = 0;
 		for (size_t i = 0; i < chanEvents_.front()->size; ++i) {
-			graph->SetPoint(index, x_vals[i], chanEvents_.front()->event->adcTrace.at(i));
+			graph->SetPoint(index, x_vals[i], chanEvents_.front()->event->adcTrace[i]);
 			index++;
 		}
 
@@ -292,8 +292,8 @@ void scopeScanner::Plot(){
 		//Determine the maximum and minimum values of the events.
 		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
 			ChannelEvent* evt = chanEvents_.at(i);
-			float evtMin = *std::min_element(evt->event->adcTrace.begin(), evt->event->adcTrace.end());
-			float evtMax = *std::max_element(evt->event->adcTrace.begin(), evt->event->adcTrace.end());
+			float evtMin = *std::min_element(evt->event->adcTrace, evt->event->adcTrace+evt->event->traceLength);
+			float evtMax = *std::max_element(evt->event->adcTrace, evt->event->adcTrace+evt->event->traceLength);
 			evtMin -= fabs(0.1 * evtMax);
 			evtMax += fabs(0.1 * evtMax);
 			if (evtMin < axisVals[1][0]) axisVals[1][0] = evtMin;

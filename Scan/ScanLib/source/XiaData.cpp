@@ -1,4 +1,5 @@
 #include <cmath>
+#include <string.h>
 
 #include "XiaData.hpp"
 
@@ -8,6 +9,7 @@
 
 /// Default constructor.
 XiaData::XiaData(){
+	adcTrace = NULL;
 	clear();
 }
 
@@ -38,30 +40,34 @@ XiaData::XiaData(XiaData *other_){
 }
 
 XiaData::~XiaData(){
+	if(adcTrace != NULL)
+		delete[] adcTrace;
 }
 
 void XiaData::reserve(const size_t &size_){
-	if(size_ == 0){ return; }
-	adcTrace.reserve(size_);
+	if(size_ == 0 || traceLength != 0) return;
+	traceLength = size_;
+	adcTrace = new unsigned short[traceLength];
 }
 
-void XiaData::assign(const size_t &size_, const int &input_){
-	adcTrace.assign(size_, input_);
+void XiaData::assign(const unsigned short &input_){
+	if(traceLength == 0) return;
+	for(size_t index = 0; index < traceLength; index++)
+		adcTrace[index] = input_;
 }
 
-void XiaData::push_back(const int &input_){
-	adcTrace.push_back(input_);
+/// Fill the trace by reading from a character array.
+void XiaData::copyTrace(char *ptr_){
+	if(traceLength == 0) return;
+	memcpy((char *)adcTrace, ptr_, traceLength*2);
 }
 
 void XiaData::clear(){
-	adcTrace.clear();
-
 	energy = 0.0; 
 	time = 0.0;
 	
-	for(int i = 0; i < numQdcs; i++){
+	for(int i = 0; i < numQdcs; i++)
 		qdcValue[i] = 0;
-	}
 
 	modNum = 0;
 	chanNum = 0;
@@ -76,6 +82,54 @@ void XiaData::clear(){
 	saturatedBit = false;
 	cfdForceTrig = false; 
 	cfdTrigSource = false; 
+	
+	if(adcTrace != NULL)
+		delete[] adcTrace;
+	
+	traceLength = 0;
+	adcTrace = NULL;
+}
+
+/// Write a pixie style event to a binary output file.
+int XiaData::writeRaw(std::ofstream &file_){
+/*	if(!file_.good()) return -1;
+
+	unsigned int chanIdentifier = 0xFFFFFFFF;
+	unsigned int eventTimeHiWord = 0xFFFFFFFF;
+	unsigned long long eventTimeLL;
+	
+	// Build up the channel identifier.
+	
+	// Build up the event time.
+	memcpy((char *)&eventTimeLL, (char *)&eventTime, 8);
+	eventTimeLo = eventTimeLL >> 32;
+	eventTimeHi = (eventTimeLL & 0xFFFF0000);
+	int whatever    = (eventTimeLL & 0x0000FFFF);
+	
+	eventTimeHiWord &= eventTimeHi;
+	eventTimeHiWord &= 
+	
+	// Build up the CFD time.
+	
+	// Build up the event energy.
+	
+	
+	// Write data to the output file.
+	file_.write((char *)&chanIdentifier, 4);
+	file_.write((char *)&eventTimeLo, 4);
+	file_.write((char *)&eventTimeHi, 4);
+
+
+
+	int numHalfWords = 8;
+
+	if(traceLength != 0){ // Write the trace.
+		file_.write((char *)adcTrace, traceLength*2);
+		numHalfWords += (int)traceLength;
+	}
+	
+	return (numHalfWords / 2);*/
+	return -1;
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -99,7 +153,7 @@ ChannelEvent::ChannelEvent(XiaData *event_){
 	cfdvals = NULL;
 	Clear();
 	event = event_;
-	size = event->adcTrace.size();
+	size = event->traceLength;
 	if(size != 0){
 		xvals = new float[size];
 		yvals = new float[size];
@@ -133,7 +187,7 @@ float ChannelEvent::CorrectBaseline(){
 	
 	// Find the maximum value, the maximum bin, and correct the baseline
 	maximum = -9999.0;
-	for(size_t i = 0; i < event->adcTrace.size(); i++){
+	for(size_t i = 0; i < event->traceLength; i++){
 		xvals[i] = i;
 		yvals[i] = event->adcTrace[i]-baseline;
 		if(yvals[i] > maximum){ 

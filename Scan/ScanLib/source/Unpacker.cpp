@@ -317,25 +317,16 @@ int Unpacker::ReadBuffer(unsigned int *buf, unsigned long &bufLen){
 			buf += headerLength;
 			// Check if trace data follows the channel header
 			if( traceLength > 0 ){
-				// sbuf points to the beginning of trace data
-				unsigned short *sbuf = (unsigned short *)buf;
-
 				currentEvt->reserve(traceLength);
 
 				/*if(currentEvt->saturatedBit)
 					currentEvt->trace.SetValue("saturation", 1);*/
 
-				if( lastVirtualChannel != NULL && lastVirtualChannel->adcTrace.empty() ){		
-					lastVirtualChannel->assign(traceLength, 0);
+				if( lastVirtualChannel != NULL && lastVirtualChannel->traceLength == 0 ){		
+					lastVirtualChannel->assign(0);
 				}
 				// Read the trace data (2-bytes per sample, i.e. 2 samples per word)
-				for(unsigned int k = 0; k < traceLength; k ++){		
-					currentEvt->push_back(sbuf[k]);
-
-					if(lastVirtualChannel != NULL){
-						lastVirtualChannel->adcTrace[k] += sbuf[k];
-					}
-				}
+				currentEvt->copyTrace((char *)buf);
 				buf += traceLength / 2;
 			}
  
