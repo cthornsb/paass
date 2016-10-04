@@ -16,11 +16,9 @@ XiaData::XiaData(){
 
 /// Constructor from a pointer to another XiaData.
 XiaData::XiaData(XiaData *other_){
-	if(other_->traceLength > 0)
-		copyTrace((char *)other_->adcTrace, other_->traceLength);
-
-	if(other_->numQdcs > 0)
-		copyQDCs((char *)other_->qdcValue, other_->numQdcs);
+	adcTrace = NULL;
+	qdcValue = NULL;
+	clear();
 
 	energy = other_->energy; 
 	time = other_->time;
@@ -38,6 +36,14 @@ XiaData::XiaData(XiaData *other_){
 	saturatedBit = other_->saturatedBit;
 	cfdForceTrig = other_->cfdForceTrig; 
 	cfdTrigSource = other_->cfdTrigSource; 
+
+	// Copy the ADC trace, if enabled.
+	if(other_->traceLength > 0)
+		copyTrace((char *)other_->adcTrace, other_->traceLength);
+
+	// Copy the onboard QDCs, if enabled.
+	if(other_->numQdcs > 0)
+		copyQDCs((char *)other_->qdcValue, other_->numQdcs);
 }
 
 XiaData::~XiaData(){
