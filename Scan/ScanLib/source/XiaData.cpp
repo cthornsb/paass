@@ -125,6 +125,14 @@ void XiaData::clearQDCs(){
 	qdcValue = NULL;
 }
 
+/// Get the size of the XiaData event when written to disk by ::writeRaw (in bytes).
+size_t XiaData::getEventLength(){
+	size_t eventLength = 4;
+	if(numQdcs > 0) eventLength += numQdcs; // Account for the onboard QDCs.
+	if(traceLength > 0) eventLength += traceLength/2; // Account for the ADC trace.
+	return eventLength;
+}
+
 /// Write a pixie style event to a binary output file.
 int XiaData::writeRaw(std::ofstream &file_){
 /*	if(!file_.good()) return -1;
@@ -275,7 +283,6 @@ void ChannelEvent::Clear(){
 	qdc = -9999;
 	max_index = 0;
 
-	write_trace = false;
 	valid_chan = false;
 	ignore = false;
 	

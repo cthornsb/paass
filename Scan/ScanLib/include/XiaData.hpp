@@ -87,13 +87,15 @@ public:
     /// Delete the QDC array.
     void clearQDCs();
     
+    /// Get the size of the XiaData event on disk (in bytes).
+    size_t getEventLength();
+    
     /// Write a pixie style event to a binary output file.
     int writeRaw(std::ofstream &file_);
 };
 
 class ChannelEvent : public XiaData {
 public:
-	bool write_trace; /// True if the adc trace is to be written to binary output file (presort only).
     bool valid_chan; /// True if the high resolution energy and time are valid.
     bool ignore; /// Ignore this event.
     
