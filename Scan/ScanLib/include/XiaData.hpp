@@ -90,7 +90,11 @@ public:
     /// Get the size of the XiaData event on disk (in bytes).
     size_t getEventLength();
     
-    /// Write a pixie style event to a binary output file.
+	/** Write a pixie style event to a binary output file.
+	  * 
+	  * \param[in] file_ Reference to an ofstream output binary file.
+	  * \return The number of bytes written to the file upon success and -1 otherwise.
+	  */
     int writeRaw(std::ofstream &file_);
 };
 

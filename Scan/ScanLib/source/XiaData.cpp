@@ -131,7 +131,7 @@ void XiaData::clearQDCs(){
 	qdcValue = NULL;
 }
 
-/// Get the size of the XiaData event when written to disk by ::writeRaw (in bytes).
+/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
 size_t XiaData::getEventLength(){
 	size_t eventLength = 4;
 	if(numQdcs > 0) eventLength += numQdcs; // Account for the onboard QDCs.
@@ -139,46 +139,73 @@ size_t XiaData::getEventLength(){
 	return eventLength;
 }
 
-/// Write a pixie style event to a binary output file.
+/** Write a pixie style event to a binary output file.
+  * 
+  * \param[in] file_ Reference to an ofstream output binary file.
+  * \return The number of bytes written to the file upon success and -1 otherwise.
+  */
 int XiaData::writeRaw(std::ofstream &file_){
-/*	if(!file_.good()) return -1;
+	if(!file_.good()) return -1;
 
+	unsigned int crateNum = 0x0; // Fixed value for now.
 	unsigned int chanIdentifier = 0xFFFFFFFF;
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
+	unsigned int eventEnergyWord = 0xFFFFFFFF;
 	unsigned long long eventTimeLL;
+	unsigned long long eventEnergyLL;
+
+	unsigned int eventLength = (unsigned int)getEventLength();
+	unsigned int headLength = eventLength - (unsigned int)traceLength/2;
 	
 	// Build up the channel identifier.
+	chanIdentifier &= ~(0x0000000F & (chanNum));              // Pixie channel number
+	chanIdentifier &= ~(0x000000F0 & (modNum << 4));          // Pixie module number (NOT the slot number)
+	chanIdentifier &= ~(0x00000F00 & (crateNum << 8));        // Crate number
+	chanIdentifier &= ~(0x0001F000 & (headLength << 12));     // Header length
+	chanIdentifier &= ~(0x1FFE0000 & (eventLength << 17));    // Event length
+	chanIdentifier &= ~(0x20000000 & (virtualChannel << 29)); // Virtual channel bit
+	chanIdentifier &= ~(0x40000000 & (eventLength << 30));    // Saturated channel bit
+	chanIdentifier &= ~(0x80000000 & (eventLength << 31));    // Pileup bit
+	chanIdentifier = ~chanIdentifier;
 	
-	// Build up the event time.
+	// Build up the low event time.
 	memcpy((char *)&eventTimeLL, (char *)&eventTime, 8);
 	eventTimeLo = eventTimeLL >> 32;
-	eventTimeHi = (eventTimeLL & 0xFFFF0000);
-	int whatever    = (eventTimeLL & 0x0000FFFF);
 	
-	eventTimeHiWord &= eventTimeHi;
-	eventTimeHiWord &= 
-	
-	// Build up the CFD time.
+	// Build up the high event time and CFD time.
+	eventTimeHi = (eventTimeLL & 0x0000FFFF);
+	cfdTime     = (eventTimeLL & 0xFFFF0000) >> 16;
+	eventTimeHiWord &= ~(0x0000FFFF & (eventTimeHi));
+	eventTimeHiWord &= ~(0xFFFF0000 & (cfdTime << 16));
+	eventTimeHiWord = ~eventTimeHiWord;
 	
 	// Build up the event energy.
-	
+	memcpy((char *)&eventEnergyLL, (char *)&energy, 8);
+	eventEnergyWord &= ~(0x0000FFFF & (eventEnergyLL));
+	eventEnergyWord &= ~(0xFFFF0000 & (eventEnergyLL << 16));
+	eventEnergyWord = ~eventEnergyWord;
 	
 	// Write data to the output file.
 	file_.write((char *)&chanIdentifier, 4);
 	file_.write((char *)&eventTimeLo, 4);
-	file_.write((char *)&eventTimeHi, 4);
+	file_.write((char *)&eventTimeHiWord, 4);
+	file_.write((char *)&eventEnergyWord, 4);
 
+	int numBytes = 16;
 
+	// Write the onbard QDCs, if enabled.
+	if(numQdcs > 0){
+		file_.write((char *)qdcValue, numQdcs*4);
+		numBytes += numQdcs*4;
+	}
 
-	int numHalfWords = 8;
-
+	// Write the ADC trace, if enabled.
 	if(traceLength != 0){ // Write the trace.
 		file_.write((char *)adcTrace, traceLength*2);
-		numHalfWords += (int)traceLength;
+		numBytes += traceLength*2;
 	}
 	
-	return (numHalfWords / 2);*/
-	return -1;
+	return numBytes;
 }
 
 /////////////////////////////////////////////////////////////////////
