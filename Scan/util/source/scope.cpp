@@ -220,11 +220,11 @@ void scopeScanner::Plot(){
 	userZoomVals[1][0] = canvas->GetUymin();
 	userZoomVals[1][1] = canvas->GetUymax();
 
-	if(chanEvents_.front()->size != x_vals.size()){ // The length of the trace has changed.
+	if(chanEvents_.front()->traceLength != x_vals.size()){ // The length of the trace has changed.
 		resetGraph_ = true;
 	}
 	if (resetGraph_) {
-		ResetGraph(chanEvents_.front()->size);
+		ResetGraph(chanEvents_.front()->traceLength);
 		for (int i=0;i<2;i++) {
 			axisVals[i][0] = 1E9;
 			axisVals[i][1] = -1E9;
@@ -242,8 +242,8 @@ void scopeScanner::Plot(){
 	//For a waveform pulse we use a graph.
 	if (numAvgWaveforms_ == 1) {
 		int index = 0;
-		for (size_t i = 0; i < chanEvents_.front()->size; ++i) {
-			graph->SetPoint(index, x_vals[i], chanEvents_.front()->event->adcTrace[i]);
+		for (size_t i = 0; i < chanEvents_.front()->traceLength; ++i) {
+			graph->SetPoint(index, x_vals[i], chanEvents_.front()->adcTrace[i]);
 			index++;
 		}
 
@@ -275,7 +275,7 @@ void scopeScanner::Plot(){
 			float cfdCrossing = chanEvents_.front()->AnalyzeCFD(cfdF_, cfdD_, cfdL_);
 			
 			// Draw the cfd waveform.
-			for(size_t cfdIndex = 0; cfdIndex < chanEvents_.front()->size; cfdIndex++)
+			for(size_t cfdIndex = 0; cfdIndex < chanEvents_.front()->traceLength; cfdIndex++)
 				cfdGraph->SetPoint((int)cfdIndex, x_vals[cfdIndex], chanEvents_.front()->cfdvals[cfdIndex] + chanEvents_.front()->baseline);
 			cfdLine->DrawLine(cfdCrossing*ADC_TIME_STEP, userZoomVals[1][0], cfdCrossing*ADC_TIME_STEP, userZoomVals[1][1]);
 			cfdGraph->Draw("LSAME");
@@ -292,8 +292,8 @@ void scopeScanner::Plot(){
 		//Determine the maximum and minimum values of the events.
 		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
 			ChannelEvent* evt = chanEvents_.at(i);
-			float evtMin = *std::min_element(evt->event->adcTrace, evt->event->adcTrace+evt->event->traceLength);
-			float evtMax = *std::max_element(evt->event->adcTrace, evt->event->adcTrace+evt->event->traceLength);
+			float evtMin = *std::min_element(evt->adcTrace, evt->adcTrace+evt->traceLength);
+			float evtMax = *std::max_element(evt->adcTrace, evt->adcTrace+evt->traceLength);
 			evtMin -= fabs(0.1 * evtMax);
 			evtMax += fabs(0.1 * evtMax);
 			if (evtMin < axisVals[1][0]) axisVals[1][0] = evtMin;
@@ -317,8 +317,8 @@ void scopeScanner::Plot(){
 		//Fill the histogram
 		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
 			ChannelEvent* evt = chanEvents_.at(i);
-			for (size_t i=0; i < evt->size; ++i) {
-				hist->Fill(x_vals[i], evt->event->adcTrace[i]);
+			for (size_t i=0; i < evt->traceLength; ++i) {
+				hist->Fill(x_vals[i], evt->adcTrace[i]);
 			}
 		}
 
@@ -423,8 +423,8 @@ bool scopeScanner::AddEvent(XiaData *event_){
 
 	//Process the waveform.
 	//channel_event->FindLeadingEdge();
-	channel_event->CorrectBaseline();
-	channel_event->FindQDC();
+	channel_event->ComputeBaseline();
+	channel_event->IntegratePulse();
 	
 	//Push the channel event into the deque.
 	chanEvents_.push_back(channel_event);

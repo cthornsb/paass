@@ -173,132 +173,79 @@ int XiaData::writeRaw(std::ofstream &file_){
 
 /// Default constructor.
 ChannelEvent::ChannelEvent(){
-	event = NULL;
-	xvals = NULL;
-	yvals = NULL;
-	cfdvals = NULL;
 	Clear();
 }
 
 /// Constructor from a XiaData. ChannelEvent will take ownership of the XiaData.
-ChannelEvent::ChannelEvent(XiaData *event_){
-	event = NULL;
-	xvals = NULL;
-	yvals = NULL;
-	cfdvals = NULL;
+ChannelEvent::ChannelEvent(XiaData *event_) : XiaData(event_) {
 	Clear();
-	event = event_;
-	size = event->traceLength;
-	if(size != 0){
-		xvals = new float[size];
-		yvals = new float[size];
-	}
 }
 
 ChannelEvent::~ChannelEvent(){
-	if(event){ delete event; }
-	if(xvals){ delete[] xvals; }
-	if(yvals){ delete[] yvals; }
+	if(cfdvals) delete[] cfdvals;
 }
 
-float ChannelEvent::CorrectBaseline(){
-	if(!event || size == 0){ return -9999; }
-	else if(baseline_corrected){ return maximum; }
+float ChannelEvent::ComputeBaseline(){
+	if(traceLength == 0){ return -9999; }
+	if(baseline > 0){ return baseline; }
 
-	// Find the baseline
+	// Find the baseline.
 	baseline = 0.0;
-	size_t sample_size = (10 <= size ? 10:size);
+	size_t sample_size = (15 <= traceLength ? 15:traceLength);
 	for(size_t i = 0; i < sample_size; i++){
-		baseline += (float)event->adcTrace[i];
+		baseline += adcTrace[i];
 	}
-	baseline = baseline/sample_size;
+	baseline = float(baseline)/sample_size;
 	
-	// Calculate the standard deviation
+	// Calculate the standard deviation.
 	stddev = 0.0;
 	for(size_t i = 0; i < sample_size; i++){
-		stddev += ((float)event->adcTrace[i] - baseline)*((float)event->adcTrace[i] - baseline);
+		stddev += (adcTrace[i] - baseline)*(adcTrace[i] - baseline);
 	}
 	stddev = std::sqrt((1.0/sample_size) * stddev);
 	
-	// Find the maximum value, the maximum bin, and correct the baseline
+	// Find the maximum value and the maximum bin.
 	maximum = -9999.0;
-	for(size_t i = 0; i < event->traceLength; i++){
-		xvals[i] = i;
-		yvals[i] = event->adcTrace[i]-baseline;
-		if(yvals[i] > maximum){ 
-			maximum = yvals[i];
+	for(size_t i = 0; i < traceLength; i++){
+		if(adcTrace[i]-baseline > maximum){ 
+			maximum = adcTrace[i]-baseline;
 			max_index = i;
 		}
 	}
 	
-	baseline_corrected = true;
-	
-	return maximum;
-}
-
-float ChannelEvent::FindLeadingEdge(const float &thresh_/*=0.05*/){
-	if(!event || (!baseline_corrected && CorrectBaseline() < 0)){ return -9999; }
-	else if(phase >= 0.0){ return phase; }
-
-	// Check if this is a valid pulse
-	if(maximum <= 0 || max_index == 0){ return -9999; }
-
-	for(size_t index = max_index; index > 0; index--){
-		if(yvals[index] <= thresh_ * maximum){ 
-			// Interpolate and return the value
-			// y = thresh_ * maximum
-			// x = (x1 + (y-y1)/(y2-y1))
-			// x1 = index, x2 = index+1
-			// y1 = yvals[index], y2 = yvals[index+1]
-			if(yvals[index+1] == yvals[index]){ return index+1; }
-			else{ return (phase = (index + (thresh_ * maximum - yvals[index])/(yvals[index+1] - yvals[index]))); }
-		}
-	}
-	
-	return -9999;
+	return baseline;
 }
 
 float ChannelEvent::IntegratePulse(const size_t &start_/*=0*/, const size_t &stop_/*=0*/){
-	if(!event || (!baseline_corrected && CorrectBaseline() < 0)){ return -9999; }
+	if(traceLength == 0 || baseline < 0.0){ return -9999; }
 	
-	size_t stop = (stop_ == 0?size:stop_);
+	size_t stop = (stop_ == 0?traceLength:stop_);
 	
 	qdc = 0.0;
 	for(size_t i = start_+1; i < stop; i++){ // Integrate using trapezoidal rule.
-		qdc += 0.5*(yvals[i-1] + yvals[i]);
+		qdc += 0.5*(adcTrace[i-1] + adcTrace[i]) - baseline;
 	}
-
-	return qdc;
-}
-
-float ChannelEvent::FindQDC(const size_t &start_/*=0*/, const size_t &stop_/*=0*/){
-	if(qdc >= 0.0){ return qdc; }
-	
-	qdc = IntegratePulse(start_, stop_);
 
 	return qdc;
 }
 
 /// Perform CFD analysis on the waveform.
 float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, const size_t &L_/*=1*/){
-	if(!event || (!baseline_corrected && CorrectBaseline() < 0)){ return -9999; }
-	if(!cfdvals){
-		if(size == 0)
-			return -9999;
-		cfdvals = new float[size];
-	}
+	if(traceLength == 0 || baseline < 0){ return -9999; }
+	if(!cfdvals)
+		cfdvals = new float[traceLength];
 	
 	float cfdMinimum = 9999;
 	size_t cfdMinIndex = 0;
 	
-	cfdCrossing = -9999;
+	phase = -9999;
 
 	// Compute the cfd waveform.
-	for(size_t cfdIndex = 0; cfdIndex < size; ++cfdIndex){
+	for(size_t cfdIndex = 0; cfdIndex < traceLength; ++cfdIndex){
 		cfdvals[cfdIndex] = 0.0;
 		if(cfdIndex >= L_ + D_ - 1){
 			for(size_t i = 0; i < L_; i++)
-				cfdvals[cfdIndex] += F_ * yvals[cfdIndex - i] - yvals[cfdIndex - i - D_];
+				cfdvals[cfdIndex] += F_ * (adcTrace[cfdIndex - i]-baseline) - (adcTrace[cfdIndex - i - D_]-baseline);
 		}
 		if(cfdvals[cfdIndex] < cfdMinimum){
 			cfdMinimum = cfdvals[cfdIndex];
@@ -311,13 +258,13 @@ float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, 
 		// Find the zero-crossing.
 		for(size_t cfdIndex = cfdMinIndex-1; cfdIndex >= 0; cfdIndex--){
 			if(cfdvals[cfdIndex] >= 0.0 && cfdvals[cfdIndex+1] < 0.0){
-				cfdCrossing = xvals[cfdIndex] - cfdvals[cfdIndex]*(xvals[cfdIndex+1]-xvals[cfdIndex])/(cfdvals[cfdIndex+1]-cfdvals[cfdIndex]);
+				phase = cfdIndex - cfdvals[cfdIndex]/(cfdvals[cfdIndex+1]-cfdvals[cfdIndex]);
 				break;
 			}
 		}
 	}
 
-	return cfdCrossing;
+	return phase;
 }
 
 void ChannelEvent::Clear(){
@@ -326,24 +273,14 @@ void ChannelEvent::Clear(){
 	baseline = -9999;
 	stddev = -9999;
 	qdc = -9999;
-	cfdCrossing = -9999;
 	max_index = 0;
 
-	hires_energy = -9999;
-	hires_time = -9999;
-	
+	write_trace = false;
 	valid_chan = false;
-	baseline_corrected = false;
 	ignore = false;
 	
-	size = 0;
-	if(xvals){ delete[] xvals; }
-	if(yvals){ delete[] yvals; }
-	if(cfdvals){ delete[] cfdvals; }
-	if(event){ event->clear(); }
-	
-	event = NULL;
-	xvals = NULL;
-	yvals = NULL;
 	cfdvals = NULL;
+	
+	if(cfdvals) 
+		delete[] cfdvals;
 }
