@@ -82,6 +82,16 @@ class Unpacker{
 	  */	
 	bool ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbose=true);
 	
+	/** ReadRawEvent assumes that the events in the incoming data are already grouped
+	  * into a raw event. This method performs sanity checks on the raw event and calls
+	  * ReadBuffer in order to construct the event list.
+	  * \param[in]  data       Pointer to an array of unsigned ints containing the spill data.
+	  * \param[in]  nWords     The number of words in the array.
+	  * \param[in]  is_verbose Toggle the verbosity flag on/off.
+	  * \return True if the spill was read successfully and false otherwise.
+	  */	
+	bool ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_verbose=true);
+	
 	/** Write all recorded channel counts to a file.
 	  * \return Nothing.
 	  */
@@ -125,11 +135,28 @@ class Unpacker{
 	  * events which fired by obtaining the module, channel, trace, etc. of the
 	  * timestamped event. This method will construct the event list for
 	  * later processing.
-	  * \param[in]  buf    Pointer to an array of unsigned ints containing raw buffer data.
-	  * \param[out] bufLen The number of words in the buffer.
-	  * \return The number of XiaDatas read from the buffer.
+	  * \param[in]  buf    Pointer to an array of unsigned ints containing raw module data.
+	  * \return The number of XiaData events read from the module buffer.
 	  */	
-	int ReadBuffer(unsigned int *buf, unsigned long &bufLen);
+	int ReadSpillModule(unsigned int *buf);
+
+	/** Called from ReadSpillModule. Responsible for decoding individual pixie
+	  * events a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum_     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return Only NULL currently. This method is only a stub.
+	  */
+	XiaData *ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex);
+	
+	/** Called from ReadSpillModule. Responsible for decoding individual pixie
+	  * events a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum_     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return Pointer to a XiaData event.
+	  */
+	XiaData *ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex);
 	
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.

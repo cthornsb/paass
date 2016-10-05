@@ -203,138 +203,189 @@ void Unpacker::ProcessRawEvent(ScanInterface *addr_/*=NULL*/){
   * events which fired by obtaining the module, channel, trace, etc. of the
   * timestamped event. This method will construct the event list for
   * later processing.
-  * \param[in]  buf    Pointer to an array of unsigned ints containing raw buffer data.
-  * \param[out] bufLen The number of words in the buffer.
-  * \return The number of XiaDatas read from the buffer.
+  * \param[in]  buf    Pointer to an array of unsigned ints containing raw module data.
+  * \param[out] bufLen The number of words in the module buffer.
+  * \return The number of XiaData events read from the module buffer.
   */
-int Unpacker::ReadBuffer(unsigned int *buf, unsigned long &bufLen){						
-	// multiplier for high bits of 48-bit time
-	static const double HIGH_MULT = pow(2., 32.); 
-
-	unsigned int modNum;
-	unsigned long numEvents = 0;
-	unsigned int *bufStart = buf;
+int Unpacker::ReadSpillModule(unsigned int *buf){						
+	unsigned int numEvents = 0;
 
 	// Determine the number of words in the buffer
-	bufLen = *buf++;
+	unsigned int bufLen = buf[0];
 
 	// Read the module number
-	modNum = *buf++;
+	unsigned int modNum = buf[1];
 
-	XiaData *lastVirtualChannel = NULL;
+	// Set the index of the first event in the module buffer.
+	// The first two words are the buffer length and the module number respectively.
+	unsigned int bufIndex = 2;
+
+	//XiaData *lastVirtualChannel = NULL;
 
 	if(bufLen > 0){ // Check if the buffer has data
-		if(bufLen == 2){ // this is an empty channel
+		if(bufLen == 2){ // this is an empty module.
 			return 0;
 		}
-		while( buf < bufStart + bufLen ){
-			XiaData *currentEvt = new XiaData();
-
-			// decoding event data... see pixie16app.c
-			// buf points to the start of channel data
-			unsigned int chanNum      = (buf[0] & 0x0000000F);
-			unsigned int slotNum      = (buf[0] & 0x000000F0) >> 4;
-			unsigned int crateNum     = (buf[0] & 0x00000F00) >> 8;
-			unsigned int headerLength = (buf[0] & 0x0001F000) >> 12;
-			unsigned int eventLength  = (buf[0] & 0x1FFE0000) >> 17;
-
-			currentEvt->virtualChannel = ((buf[0] & 0x20000000) != 0);
-			currentEvt->saturatedBit   = ((buf[0] & 0x40000000) != 0);
-			currentEvt->pileupBit      = ((buf[0] & 0x80000000) != 0);
-
-			// Rev. D header lengths not clearly defined in pixie16app_defs
-			//! magic numbers here for now
-			if(headerLength == 1){
-				// this is a manual statistics block inserted by the poll program
-				/*stats.DoStatisticsBlock(&buf[1], modNum);
-				buf += eventLength;
-				numEvents = -10;*/
-				continue;
-			}
-			if(headerLength != 4 && headerLength != 8 && headerLength != 12 && headerLength != 16){
-				std::cout << "ReadBuffer: Unexpected header length: " << headerLength << std::endl;
-				std::cout << "ReadBuffer:   Buffer " << modNum << " of length " << bufLen << std::endl;
-				std::cout << "ReadBuffer:   CHAN:SLOT:CRATE " << chanNum << ":" << slotNum << ":" << crateNum << std::endl;
-				// advance to next event and continue
-				// buf += EventLength;
-				// continue;
-
-				// skip the rest of this buffer
-				return numEvents;
-			}
-
-			unsigned int lowTime     = buf[1];
-			unsigned int highTime    = buf[2] & 0x0000FFFF;
-			unsigned int cfdTime     = (buf[2] & 0xFFFF0000) >> 16;
-			unsigned int energy      = buf[3] & 0x0000FFFF;
-			unsigned int traceLength = (buf[3] & 0xFFFF0000) >> 16;
-
-			if(headerLength == 8 || headerLength == 16){
-				// Skip the onboard partial sums for now 
-				// trailing, leading, gap, baseline
-			}
-
-			if(headerLength >= 12) // Copy the QDCs.
-				currentEvt->copyQDCs((char *)&buf[headerLength - 8], 8);
-
-			// One last check
-			if( traceLength / 2 + headerLength != eventLength ){
-				std::cout << "ReadBuffer: Bad event length (" << eventLength << ") does not correspond with length of header (";
-				std::cout << headerLength << ") and length of trace (" << traceLength << ")" << std::endl;
-				buf += eventLength;
-				continue;
-			}
-
-			// Handle multiple crates
-			modNum += 100 * crateNum;
-
-			currentEvt->chanNum = chanNum;
-			currentEvt->modNum = modNum;
-			/*if(currentEvt->virtualChannel){
-				DetectorLibrary* modChan = DetectorLibrary::get();
-
-				currentEvt->modNum += modChan->GetPhysicalModules();
-				if(modChan->at(modNum, chanNum).HasTag("construct_trace")){
-					lastVirtualChannel = currentEvt;
-				}
-			}*/
-
-			channel_counts[modNum][chanNum]++;
-
-			currentEvt->energy = energy;
-			if(currentEvt->saturatedBit){ currentEvt->energy = 16383; }
-					
-			currentEvt->trigTime = lowTime;
-			currentEvt->cfdTime	= cfdTime;
-			currentEvt->eventTimeHi = highTime;
-			currentEvt->eventTimeLo = lowTime;
-			currentEvt->time = highTime * HIGH_MULT + lowTime;
-
-			buf += headerLength;
-			// Check if trace data follows the channel header
-			if( traceLength > 0 ){
-				/*if(currentEvt->saturatedBit)
-					currentEvt->trace.SetValue("saturation", 1);*/
-
-				if( lastVirtualChannel != NULL && lastVirtualChannel->traceLength == 0 ){		
-					lastVirtualChannel->assign(0);
-				}
-				// Read the trace data (2-bytes per sample, i.e. 2 samples per word)
-				currentEvt->copyTrace((char *)buf, traceLength);
-				buf += traceLength / 2;
-			}
- 
-			AddEvent(currentEvt);
+		while( bufIndex < bufLen ){
+			//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex);
+			XiaData *currentEvt = this->ReadEventRevF(buf, bufIndex);
 			
+			// Check that the current event is defined.
+			if(currentEvt == NULL){
+				//std::cout << "ReadSpilbuffers: ERROR - ReadBufferRevD returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
+				std::cout << "ReadSpilbuffers: ERROR - ReadBufferRevF returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
+				continue;
+			}
+			
+			// Add the event to the event list.
+			AddEvent(currentEvt);
 			numEvents++;
 		}
 	} 
 	else{ // if buffer has data
-		std::cout << "ReadBuffer: ERROR IN ReadBuffData, LIST UNKNOWN" << std::endl;
+		std::cout << "ReadSpilbuffers: ERROR - Spill has size zero!" << std::endl;
 		return -100;
 	}
 	
 	return numEvents;
+}
+
+/** Called from ReadSpillModule. Responsible for decoding individual pixie
+  * events a binary input file.
+  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  modNum     The current module number being scanned.
+  * \param[out] bufferIndex The current index in the module buffer.
+  * \return Only NULL currently. This method is only a stub.
+  */
+XiaData *Unpacker::ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex){
+	return NULL;
+}
+
+/** Called from ReadSpillModule. Responsible for decoding individual pixie
+  * events a binary input file.
+  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  modNum     The current module number being scanned.
+  * \param[out] bufferIndex The current index in the module buffer.
+  * \return Only NULL currently. This method is only a stub.
+  */
+XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){	
+	// Multiplier for high bits of 48-bit time
+	static const double HIGH_MULT = pow(2., 32.); 
+
+	// Determine the number of words in the buffer
+	//unsigned int bufLen = buf[0];
+
+	// Read the module number
+	unsigned int modNum = buf[1];
+
+	// Set the index of the start of the event.
+	//unsigned int eventStart = bufferIndex;
+
+	// Decoding event data... see pixie16app.c
+	// buf points to the start of channel data
+	unsigned int chanNum      = (buf[bufferIndex] & 0x0000000F);
+	unsigned int slotNum      = (buf[bufferIndex] & 0x000000F0) >> 4;
+	unsigned int crateNum     = (buf[bufferIndex] & 0x00000F00) >> 8;
+	unsigned int headerLength = (buf[bufferIndex] & 0x0001F000) >> 12;
+	unsigned int eventLength  = (buf[bufferIndex] & 0x1FFE0000) >> 17;
+
+	unsigned int lowTime      =  buf[bufferIndex + 1];
+	unsigned int highTime     =  buf[bufferIndex + 2] & 0x0000FFFF;
+	unsigned int cfdTime      = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
+	unsigned int energy       =  buf[bufferIndex + 3] & 0x0000FFFF;
+	unsigned int traceLength  = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
+
+	// Rev. D header lengths not clearly defined in pixie16app_defs
+	//! magic numbers here for now
+	if(headerLength == 1){
+		// this is a manual statistics block inserted by the poll program
+		/*stats.DoStatisticsBlock(&buf[1], modNum);
+		numEvents = -10;*/
+		
+		// Advance to next event.
+		bufferIndex += eventLength;
+		return NULL;
+	}
+	
+	// Check that the header length is valid.
+	if(headerLength != 4 && headerLength != 8 && headerLength != 12 && headerLength != 16){
+		std::cout << "ReadBufferRevF: Unexpected header length: " << headerLength << std::endl;
+		std::cout << "ReadBufferRevF:   Module " << modNum << std::endl;
+		std::cout << "ReadBufferRevF:   CHAN:SLOT:CRATE " << chanNum << ":" << slotNum << ":" << crateNum << std::endl;
+		
+		// Advance to next event.
+		bufferIndex += eventLength;
+		return NULL;
+	}
+
+	// One last check on the event length.
+	if( traceLength / 2 + headerLength != eventLength ){
+		std::cout << "ReadBufferRevF: Bad event length (" << eventLength << ") does not correspond with length of header (";
+		std::cout << headerLength << ") and length of trace (" << traceLength << ")" << std::endl;
+		
+		// Advance to next event.
+		bufferIndex += eventLength;
+		return NULL;
+	}
+
+	// Define a new XiaData event.
+	XiaData *currentEvt = new XiaData();
+
+	currentEvt->virtualChannel = ((buf[bufferIndex] & 0x20000000) != 0);
+	currentEvt->saturatedBit   = ((buf[bufferIndex] & 0x40000000) != 0);
+	currentEvt->pileupBit      = ((buf[bufferIndex] & 0x80000000) != 0);
+
+	// Move the buffer index past the header.
+	bufferIndex += 4;
+
+	if(headerLength == 8 || headerLength == 16){
+		// Skip the onboard partial sums for now 
+		// trailing, leading, gap, baseline
+		bufferIndex += 4;
+	}
+
+	if(headerLength >= 12){ // Copy the QDCs.
+		currentEvt->copyQDCs((char *)&buf[bufferIndex], 8);
+		bufferIndex += 8;
+	}
+
+	currentEvt->chanNum = chanNum;
+	currentEvt->modNum = modNum + 100 * crateNum; // Handle multiple crates
+	/*if(currentEvt->virtualChannel){
+		DetectorLibrary* modChan = DetectorLibrary::get();
+
+		currentEvt->modNum += modChan->GetPhysicalModules();
+		if(modChan->at(modNum, chanNum).HasTag("construct_trace")){
+			lastVirtualChannel = currentEvt;
+		}
+	}*/
+
+	// Does not handle multiple crates! CRT
+	channel_counts[modNum][chanNum]++;
+
+	currentEvt->energy = energy;
+	if(currentEvt->saturatedBit){ currentEvt->energy = 16383; }
+			
+	currentEvt->trigTime = lowTime;
+	currentEvt->cfdTime	= cfdTime;
+	currentEvt->eventTimeHi = highTime;
+	currentEvt->eventTimeLo = lowTime;
+	currentEvt->time = highTime * HIGH_MULT + lowTime;
+
+	// Check if trace data follows the channel header
+	if( traceLength > 0 ){
+		/*if(currentEvt->saturatedBit)
+			currentEvt->trace.SetValue("saturation", 1);*/
+
+		/*if( lastVirtualChannel != NULL && lastVirtualChannel->traceLength == 0 ){		
+			lastVirtualChannel->assign(0);
+		}*/
+		// Read the trace data (2-bytes per sample, i.e. 2 samples per word)
+		currentEvt->copyTrace((char *)&buf[bufferIndex], traceLength);
+		bufferIndex += (traceLength / 2);
+	}
+	
+	return currentEvt;
 }
 
 Unpacker::Unpacker() :
@@ -379,8 +430,6 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 	//time_t tmsBegin;
 
 	int retval = 0; // return value from various functions
-	
-	unsigned long bufLen;
 	
 	// Various event counters 
 	unsigned long numEvents = 0;
@@ -434,7 +483,7 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 			
 			// Read the buffer.	After read, the vector eventList will 
 			//contain pointers to all channels that fired in this buffer
-			retval = ReadBuffer(&data[nWords_read], bufLen);
+			retval = ReadSpillModule(&data[nWords_read]);
 
 			// If the return value is less than the error code, 
 			//reading the buffer failed for some reason.	
