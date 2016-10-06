@@ -117,6 +117,15 @@ class ScanInterface{
 	/// Return a pointer to a fileInformation object used to store file header info.
 	fileInformation *GetFileInfo(){ return &finfo; }
 
+	/// Return a pointer to the pld file header.
+	PLD_header *GetPldHeader(){ return &pldHead; }
+	
+	/// Return a pointer to the ldf file header.
+	HEAD_buffer *GetLdfHeader(){ return &headbuff; }
+
+	/// Return an integer representing the input file format.
+	int GetFileFormat(){ return file_format; }
+
 	/// Set the header string used to prefix output messages.
 	void SetProgramName(const std::string &head_){
 		progName = head_;
@@ -282,7 +291,7 @@ class ScanInterface{
 	std::string output_filename; //!< Name of file to be used for output
 
 	int max_spill_size; /// Maximum size of a spill to read.
-	int file_format; /// Input file format to use (0=.ldf, 1=.pld, 2=.root).
+	int file_format; /// Input file format to use (0=.ldf, 1=.pld, 2=.pld(presort)).
 	
 	unsigned long num_spills_recvd; /// The total number of good spills received from either the input file or shared memory.
 	unsigned long file_start_offset; /// The first word in the file at which to start scanning.

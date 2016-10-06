@@ -295,6 +295,12 @@ bool ScanInterface::open_input_file(const std::string &fname_){
 			
 			pldHead.Print();	
 			std::cout << std::endl;
+
+			// Check if this is a presorted pld file.
+			if(strcmp(pldHead.GetFormat(), "PRESORTPIXIEDATA") == 0){
+				std::cout << msgHeader << "Reading from presorted file.\n";
+				file_format = 2;
+			}
 		}
 	}
 
@@ -623,7 +629,7 @@ void ScanInterface::RunControl(){
 			if(!batch_mode){ term->SetStatus("\033[0;33m[IDLE]\033[0m Finished scanning file."); }
 			else{ std::cout << std::endl << std::endl; }
 		}
-		else if(file_format == 1){
+		else if(file_format == 1 || file_format == 2){
 			unsigned int *data = NULL;
 			unsigned int nBytes;
 		
@@ -632,8 +638,7 @@ void ScanInterface::RunControl(){
 			// Reset the buffer reader to default values.
 			pldData.Reset();
 		
-			while(pldData.Read(&input_file, (char*)data, nBytes,
-							   4*max_spill_size, dry_run_mode)){
+			while(pldData.Read(&input_file, (char*)data, nBytes, 4*max_spill_size, dry_run_mode)){
 				if(kill_all == true){ 
 					break;
 				}
@@ -654,10 +659,15 @@ void ScanInterface::RunControl(){
 				}
 			
 				if(!dry_run_mode){ 
-					int word1 = 2, word2 = 9999;
-					memcpy(&data[(nBytes/4)], (char *)&word1, 4);
-					memcpy(&data[(nBytes/4)+1], (char *)&word2, 4);
-					core->ReadSpill(data, nBytes/4 + 2, is_verbose); 
+					if(file_format == 1){
+						int word1 = 2, word2 = 9999;
+						memcpy(&data[(nBytes/4)], (char *)&word1, 4);
+						memcpy(&data[(nBytes/4)+1], (char *)&word2, 4);
+						core->ReadSpill(data, nBytes/4 + 2, is_verbose); 
+					}
+					else{
+						core->ReadRawEvent(data, nBytes/4, is_verbose);
+					}
 					IdleTask();
 				}
 				num_spills_recvd++;
@@ -674,8 +684,6 @@ void ScanInterface::RunControl(){
 		
 			if(!batch_mode){ term->SetStatus("\033[0;33m[IDLE]\033[0m Finished scanning file."); }
 			else{ std::cout << std::endl << std::endl; }
-		}
-		else if(file_format == 2){
 		}
 
 		// Notify that the scan has completed.
