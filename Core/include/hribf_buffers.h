@@ -102,7 +102,11 @@ class PLD_header : public BufferType{
 		
 	void SetStartDateTime();
 	
+	void SetStartDateTime(std::string input_);
+	
 	void SetEndDateTime();
+	
+	void SetEndDateTime(std::string input_);
 
 	void SetFacility(std::string input_);
 	

@@ -121,6 +121,11 @@ void PLD_header::SetStartDateTime(){
 	set_char_array(std::string(date_holder), start_date, 24); // Strip the trailing newline character
 }
 
+/// Set the date and tiem of when the file is opened.
+void PLD_header::SetStartDateTime(std::string input_){
+	set_char_array(input_, start_date, 24);
+}
+
 /// Set the date and time of when the file is closed.
 void PLD_header::SetEndDateTime(){
 	time_t rawtime;
@@ -128,6 +133,11 @@ void PLD_header::SetEndDateTime(){
 	
 	char *date_holder = ctime(&rawtime);
 	set_char_array(std::string(date_holder), end_date, 24); // Strip the trailing newline character
+}
+
+/// Set the date and time of when the file is closed.
+void PLD_header::SetEndDateTime(std::string input_){
+	set_char_array(input_, end_date, 24);
 }
 
 /// Set the facility of the output pld file (max length 16).
