@@ -87,7 +87,7 @@ public:
     /// Delete the QDC array.
     void clearQDCs();
     
-    /// Get the size of the XiaData event on disk (in bytes).
+	/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
     size_t getEventLength();
     
 	/** Write a pixie style event to a binary output file.

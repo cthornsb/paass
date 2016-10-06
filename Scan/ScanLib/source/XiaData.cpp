@@ -182,7 +182,7 @@ int XiaData::writeRaw(std::ofstream &file_){
 	// Build up the event energy.
 	memcpy((char *)&eventEnergyLL, (char *)&energy, 8);
 	eventEnergyWord &= ~(0x0000FFFF & (eventEnergyLL));
-	eventEnergyWord &= ~(0xFFFF0000 & (eventEnergyLL << 16));
+	eventEnergyWord &= ~(0xFFFF0000 & (traceLength << 16));
 	eventEnergyWord = ~eventEnergyWord;
 	
 	// Write data to the output file.
