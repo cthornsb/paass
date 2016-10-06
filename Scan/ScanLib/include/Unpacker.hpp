@@ -147,7 +147,7 @@ class Unpacker{
 	  * \param[out] bufferIndex The current index in the module buffer.
 	  * \return Only NULL currently. This method is only a stub.
 	  */
-	XiaData *ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex);
+	XiaData *ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
 	
 	/** Called from ReadSpillModule. Responsible for decoding individual pixie
 	  * events a binary input file.
@@ -156,7 +156,7 @@ class Unpacker{
 	  * \param[out] bufferIndex The current index in the module buffer.
 	  * \return Pointer to a XiaData event.
 	  */
-	XiaData *ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex);
+	XiaData *ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
 	
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.

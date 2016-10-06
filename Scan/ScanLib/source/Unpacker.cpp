@@ -227,13 +227,13 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 			return 0;
 		}
 		while( bufIndex < bufLen ){
-			//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex);
-			XiaData *currentEvt = this->ReadEventRevF(buf, bufIndex);
+			//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex, modNum);
+			XiaData *currentEvt = this->ReadEventRevF(buf, bufIndex, modNum);
 			
 			// Check that the current event is defined.
 			if(currentEvt == NULL){
-				//std::cout << "ReadSpilbuffers: ERROR - ReadBufferRevD returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
-				std::cout << "ReadSpilbuffers: ERROR - ReadBufferRevF returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
+				//std::cout << "ReadSpillModule: ERROR - ReadBufferRevD returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
+				std::cout << "ReadSpillModule: ERROR - ReadBufferRevF returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
 				continue;
 			}
 			
@@ -243,7 +243,7 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 		}
 	} 
 	else{ // if buffer has data
-		std::cout << "ReadSpilbuffers: ERROR - Spill has size zero!" << std::endl;
+		std::cout << "ReadSpillModule: ERROR - Spill has size zero!" << std::endl;
 		return -100;
 	}
 	
@@ -257,7 +257,7 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
   * \param[out] bufferIndex The current index in the module buffer.
   * \return Only NULL currently. This method is only a stub.
   */
-XiaData *Unpacker::ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex){
+XiaData *Unpacker::ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){
 	return NULL;
 }
 
@@ -268,7 +268,7 @@ XiaData *Unpacker::ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex){
   * \param[out] bufferIndex The current index in the module buffer.
   * \return Only NULL currently. This method is only a stub.
   */
-XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){	
+XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){	
 	// Multiplier for high bits of 48-bit time
 	static const double HIGH_MULT = pow(2., 32.); 
 
@@ -276,7 +276,7 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){
 	//unsigned int bufLen = buf[0];
 
 	// Read the module number
-	unsigned int modNum = buf[1];
+	//unsigned int modNum = buf[1];
 
 	// Set the index of the start of the event.
 	//unsigned int eventStart = bufferIndex;
@@ -295,11 +295,14 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){
 	unsigned int energy       =  buf[bufferIndex + 3] & 0x0000FFFF;
 	unsigned int traceLength  = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
 
+	if(modNum == 9999)
+		modNum = slotNum;
+
 	// Rev. D header lengths not clearly defined in pixie16app_defs
 	//! magic numbers here for now
 	if(headerLength == 1){
 		// this is a manual statistics block inserted by the poll program
-		/*stats.DoStatisticsBlock(&buf[1], modNum);
+		/*stats.DoStatisticsBlock(&buf[bufferIndex + 1], modNum);
 		numEvents = -10;*/
 		
 		// Advance to next event.
@@ -309,9 +312,9 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){
 	
 	// Check that the header length is valid.
 	if(headerLength != 4 && headerLength != 8 && headerLength != 12 && headerLength != 16){
-		std::cout << "ReadBufferRevF: Unexpected header length: " << headerLength << std::endl;
-		std::cout << "ReadBufferRevF:   Module " << modNum << std::endl;
-		std::cout << "ReadBufferRevF:   CHAN:SLOT:CRATE " << chanNum << ":" << slotNum << ":" << crateNum << std::endl;
+		std::cout << "ReadEventRevF: Unexpected header length: " << headerLength << std::endl;
+		std::cout << "ReadEventRevF:  Module " << modNum << std::endl;
+		std::cout << "ReadEventRevF:  CHAN:SLOT:CRATE " << chanNum << ":" << slotNum << ":" << crateNum << std::endl;
 		
 		// Advance to next event.
 		bufferIndex += eventLength;
@@ -320,7 +323,7 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex){
 
 	// One last check on the event length.
 	if( traceLength / 2 + headerLength != eventLength ){
-		std::cout << "ReadBufferRevF: Bad event length (" << eventLength << ") does not correspond with length of header (";
+		std::cout << "ReadEventRevF: Bad event length (" << eventLength << ") does not correspond with length of header (";
 		std::cout << headerLength << ") and length of trace (" << traceLength << ")" << std::endl;
 		
 		// Advance to next event.
@@ -589,6 +592,74 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 	}
 	
 	return true;		
+}
+
+/** ReadRawEvent assumes that the events in the incoming data are already grouped
+  * into a raw event. This method performs sanity checks on the raw event and calls
+  * ReadBuffer in order to construct the event list.
+  * \param[in]  data       Pointer to an array of unsigned ints containing the spill data.
+  * \param[in]  nWords     The number of words in the array.
+  * \param[in]  is_verbose Toggle the verbosity flag on/off.
+  * \return True if the spill was read successfully and false otherwise.
+  */	
+bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_verbose/*=true*/){
+	if(!rawEvent.empty())
+		ClearRawEvent();
+
+	// Reset the minimum times.
+	if(numRawEvt == 0)
+		firstTime = std::numeric_limits<double>::max();
+	realStartTime = std::numeric_limits<double>::max();
+	realStopTime = std::numeric_limits<double>::min();
+
+	// Set the index of the first event in the module buffer.
+	unsigned int bufIndex = 0;
+
+	while( bufIndex < nWords ){
+		//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex);
+		XiaData *currentEvt = this->ReadEventRevF(data, bufIndex);
+		
+		// Check that the current event is defined.
+		if(currentEvt == NULL){
+			//std::cout << "ReadRawEvent: ERROR - ReadEventRevD returned NULL event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+			std::cout << "ReadRawEvent: ERROR - ReadEventRevF returned NULL event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+			continue;
+		}
+		
+		// Check for the minimum time in this raw event.
+		if(currentEvt->time < realStartTime) 
+			realStartTime = currentEvt->time;
+			
+		// Check for the maximum time in this raw event.
+		if(currentEvt->time > realStopTime) 
+			realStopTime = currentEvt->time;
+
+		// Update raw stats output with the new event before adding it to the raw event.
+		RawStats(currentEvt);			
+		
+		// Push this channel event into the rawEvent.
+		rawEvent.push_back(currentEvt);
+		
+		// Check for the end of the raw event.
+		if(bufIndex < nWords && data[bufIndex] == 0xFFFFFFFF){
+			// Print the time of the very first raw event.
+			if(numRawEvt == 0){
+				firstTime = realStartTime;
+				std::cout << "ReadRawEvent: First event time is " << firstTime << " clock ticks.\n";
+			}
+
+			// Process the event.
+			ProcessRawEvent(interface);
+
+			// Increment the number of raw events which have been read.
+			numRawEvt++;		
+			
+			// Skip the delimiter.
+			bufIndex++; 
+		}
+	}
+	
+	return true;
 }
 
 /** Write all recorded channel counts to a file.
