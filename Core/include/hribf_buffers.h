@@ -106,6 +106,8 @@ class PLD_header : public BufferType{
 
 	void SetFacility(std::string input_);
 	
+	void SetFormat(std::string input_);
+	
 	void SetTitle(std::string input_);
 	
 	void SetRunNumber(unsigned int input_){ run_num = input_; }

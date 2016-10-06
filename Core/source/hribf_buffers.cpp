@@ -134,7 +134,12 @@ void PLD_header::SetEndDateTime(){
 void PLD_header::SetFacility(std::string input_){
 	set_char_array(input_, facility, 16);
 }
-	
+
+/// Set the facility of the output pld file (max length 16).
+void PLD_header::SetFormat(std::string input_){
+	set_char_array(input_, format, 16);
+}
+
 /// Set the title of the output pld file (unlimited length).
 void PLD_header::SetTitle(std::string input_){
 	if(run_title){ delete[] run_title; }
