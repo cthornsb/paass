@@ -160,6 +160,21 @@ void PLD_header::SetTitle(std::string input_){
 	run_title[input_.size()] = '\0';
 }
 
+/// Overwrite the max spill size and the run time length.
+void PLD_header::OverwriteValues(std::ofstream *file_){
+	if(!file_ || !file_->is_open() || !file_->good()){ return; }
+
+	// Overwrite the maximum raw event spill length.
+	file_->seekp(8, std::ios::beg);
+	file_->write((char *)&max_spill_size, 4);
+	
+	// Overwrite the run time length.
+	file_->write((char *)&run_time, 4);
+	
+	// Seek back to the end of the file.
+	file_->seekp(0, std::ios::end);
+}
+
 /// Write a pld style header to a file.
 bool PLD_header::Write(std::ofstream *file_){
 	if(!file_ || !file_->is_open() || !file_->good()){ return false; }

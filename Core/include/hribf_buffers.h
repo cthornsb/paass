@@ -120,6 +120,8 @@ class PLD_header : public BufferType{
 	
 	void SetRunTime(float time_){ run_time = time_; }
 	
+	void OverwriteValues(std::ofstream *file_);
+	
 	/** HEAD buffer (1 word buffer type, 1 word run number, 1 word maximum spill size, 4 word format, 
 	  * 2 word facility, 6 word date, 1 word title length (x in bytes), x/4 word title, 1 word end of buffer*/
 	virtual bool Write(std::ofstream *file_);
