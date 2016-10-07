@@ -20,7 +20,6 @@ class XiaData{
 public:
     unsigned int energy; /// Raw pixie energy.
     unsigned long long time; /// Raw pixie event time. Measured in filter clock ticks (8E-9 Hz for RevF).
-    unsigned long long eventTime; /// The event time recorded by Pixie.
     
     size_t traceLength;
     unsigned short *adcTrace; /// ADC trace capture.

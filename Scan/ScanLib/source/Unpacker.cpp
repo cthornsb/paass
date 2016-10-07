@@ -272,15 +272,6 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, u
 	// Multiplier for high bits of 48-bit time
 	static const double HIGH_MULT = pow(2., 32.); 
 
-	// Determine the number of words in the buffer
-	//unsigned int bufLen = buf[0];
-
-	// Read the module number
-	//unsigned int modNum = buf[1];
-
-	// Set the index of the start of the event.
-	//unsigned int eventStart = bufferIndex;
-
 	// Decoding event data... see pixie16app.c
 	// buf points to the start of channel data
 	unsigned int chanNum      = (buf[bufferIndex] & 0x0000000F);
@@ -374,7 +365,6 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, u
 	currentEvt->eventTimeHi = highTime;
 	currentEvt->eventTimeLo = lowTime;
 	currentEvt->time = highTime * HIGH_MULT + lowTime;
-	currentEvt->eventTime = currentEvt->time;
 
 	// Check if trace data follows the channel header
 	if( traceLength > 0 ){

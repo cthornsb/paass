@@ -28,7 +28,6 @@ XiaData::XiaData(XiaData *other_){
 	cfdTime = other_->cfdTime;
 	eventTimeLo = other_->eventTimeLo;
 	eventTimeHi = other_->eventTimeHi;
-	eventTime = other_->eventTime;
 
 	virtualChannel = other_->virtualChannel;
 	pileupBit = other_->pileupBit;
@@ -99,7 +98,6 @@ void XiaData::clear(){
 	cfdTime = 0;
 	eventTimeLo = 0;
 	eventTimeHi = 0;
-	eventTime = 0.0;
 
 	virtualChannel = false;
 	pileupBit = false;
@@ -168,10 +166,10 @@ int XiaData::writeRaw(std::ofstream *file_, char *array_){
 	chanIdentifier = ~chanIdentifier;
 	
 	// Build up the low event time.
-	eventTimeLo = (eventTime & 0x00000000FFFFFFFF);
+	eventTimeLo = (time & 0x00000000FFFFFFFF);
 	
 	// Build up the high event time and CFD time.
-	eventTimeHi = (eventTime >> 32);
+	eventTimeHi = (time >> 32);
 	eventTimeHiWord &= ~(0x0000FFFF & (eventTimeHi));
 	eventTimeHiWord &= ~(0xFFFF0000 & (cfdTime << 16));
 	eventTimeHiWord = ~eventTimeHiWord;
@@ -228,7 +226,6 @@ void XiaData::Print(){
 	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
 	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
 	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
-	std::cout << " eventTime:   " << this->eventTime << std::endl;
 }
 
 /////////////////////////////////////////////////////////////////////
