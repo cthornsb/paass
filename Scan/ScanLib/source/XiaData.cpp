@@ -216,6 +216,21 @@ int XiaData::writeRaw(std::ofstream *file_, char *array_){
 	return numBytes;
 }
 
+/// Print event information to the screen.
+void XiaData::Print(){
+	std::cout << " energy:      " << this->energy << std::endl;
+	std::cout << " time:        " << this->time << std::endl;
+	std::cout << " traceLength: " << this->traceLength << std::endl;
+	std::cout << " numQdcs:     " << this->numQdcs << std::endl;
+	std::cout << " slotNum:     " << this->slotNum << std::endl;
+	std::cout << " modNum:      " << this->modNum << std::endl;
+	std::cout << " chanNum:     " << this->chanNum << std::endl;
+	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
+	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
+	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
+	std::cout << " eventTime:   " << this->eventTime << std::endl;
+}
+
 /////////////////////////////////////////////////////////////////////
 // ChannelEvent
 /////////////////////////////////////////////////////////////////////
