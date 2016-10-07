@@ -297,7 +297,7 @@ bool ScanInterface::open_input_file(const std::string &fname_){
 			std::cout << std::endl;
 
 			// Check if this is a presorted pld file.
-			if(strcmp(pldHead.GetFormat(), "PRESORTPIXIEDATA") == 0){
+			if(strcmp(pldHead.GetFormat(), "PRESORTED_EVENTS") == 0){
 				std::cout << msgHeader << "Reading from presorted file.\n";
 				file_format = 2;
 			}

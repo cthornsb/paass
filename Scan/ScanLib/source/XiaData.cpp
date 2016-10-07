@@ -146,13 +146,12 @@ size_t XiaData::getEventLength(){
   * \return The number of bytes written to the file upon success and -1 otherwise.
   */
 int XiaData::writeRaw(std::ofstream *file_, char *array_){
-	if((!file_ && !array_) || !file_->good()) return -1;
+	if((!file_ && !array_) || (file_ && !file_->good())) return -1;
 
 	unsigned int crateNum = 0x0; // Fixed value for now.
 	unsigned int chanIdentifier = 0xFFFFFFFF;
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
 	unsigned int eventEnergyWord = 0xFFFFFFFF;
-	unsigned long long eventEnergyLL;
 
 	unsigned int eventLength = (unsigned int)getEventLength();
 	unsigned int headLength = eventLength - (unsigned int)traceLength/2;
@@ -164,8 +163,8 @@ int XiaData::writeRaw(std::ofstream *file_, char *array_){
 	chanIdentifier &= ~(0x0001F000 & (headLength << 12));     // Header length
 	chanIdentifier &= ~(0x1FFE0000 & (eventLength << 17));    // Event length
 	chanIdentifier &= ~(0x20000000 & (virtualChannel << 29)); // Virtual channel bit
-	chanIdentifier &= ~(0x40000000 & (saturatedBit << 30));    // Saturated channel bit
-	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));    // Pileup bit
+	chanIdentifier &= ~(0x40000000 & (saturatedBit << 30));   // Saturated channel bit
+	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));      // Pileup bit
 	chanIdentifier = ~chanIdentifier;
 	
 	// Build up the low event time.
@@ -178,8 +177,7 @@ int XiaData::writeRaw(std::ofstream *file_, char *array_){
 	eventTimeHiWord = ~eventTimeHiWord;
 	
 	// Build up the event energy.
-	memcpy((char *)&eventEnergyLL, (char *)&energy, 8);
-	eventEnergyWord &= ~(0x0000FFFF & (eventEnergyLL));
+	eventEnergyWord &= ~(0x0000FFFF & (energy));
 	eventEnergyWord &= ~(0xFFFF0000 & (traceLength << 16));
 	eventEnergyWord = ~eventEnergyWord;
 	
