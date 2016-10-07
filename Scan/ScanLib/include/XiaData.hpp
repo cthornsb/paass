@@ -18,8 +18,9 @@
  */
 class XiaData{
 public:
-    double energy; /// Raw pixie energy.
-    double time; /// Raw pixie event time. Measured in filter clock ticks (8E-9 Hz for RevF).
+    unsigned int energy; /// Raw pixie energy.
+    unsigned long long time; /// Raw pixie event time. Measured in filter clock ticks (8E-9 Hz for RevF).
+    unsigned long long eventTime; /// The event time recorded by Pixie.
     
     size_t traceLength;
     unsigned short *adcTrace; /// ADC trace capture.
@@ -30,11 +31,9 @@ public:
     unsigned int slotNum; ///Slot number
     unsigned int modNum; /// Module number.
     unsigned int chanNum; /// Channel number.
-    unsigned int trigTime; /// The channel trigger time, trigger time and the lower 32 bits of the event time are not necessarily the same but could be separated by a constant value.
     unsigned int cfdTime; /// CFD trigger time in units of 1/256 pixie clock ticks.
     unsigned int eventTimeLo; /// Lower 32 bits of pixie16 event time.
     unsigned int eventTimeHi; /// Upper 32 bits of pixie16 event time.
-    double eventTime; /// The event time recorded by Pixie.
     
     bool virtualChannel; /// Flagged if generated virtually in Pixie DSP.
     bool pileupBit; /// Pile-up flag from Pixie.
@@ -90,12 +89,18 @@ public:
 	/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
     size_t getEventLength();
     
-	/** Write a pixie style event to a binary output file.
+	/** Write a pixie style event to a binary output file. Output data may
+	  * be written to both an ofstream and a character array. One of the
+	  * pointers must not be NULL.
 	  * 
-	  * \param[in] file_ Reference to an ofstream output binary file.
+	  * \param[in] file_ Pointer to an ofstream output binary file.
+	  * \param[in] array_ Pointer to a character array into which data will be written.
 	  * \return The number of bytes written to the file upon success and -1 otherwise.
 	  */
-    int writeRaw(std::ofstream &file_);
+    int writeRaw(std::ofstream *file_, char *array_);
+    
+    /// Print event information to the screen.
+    void Print();
 };
 
 class ChannelEvent : public XiaData {

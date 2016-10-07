@@ -353,6 +353,7 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, u
 	}
 
 	currentEvt->chanNum = chanNum;
+	currentEvt->slotNum = slotNum;
 	currentEvt->modNum = modNum + 100 * crateNum; // Handle multiple crates
 	/*if(currentEvt->virtualChannel){
 		DetectorLibrary* modChan = DetectorLibrary::get();
@@ -369,11 +370,11 @@ XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, u
 	currentEvt->energy = energy;
 	if(currentEvt->saturatedBit){ currentEvt->energy = 16383; }
 			
-	currentEvt->trigTime = lowTime;
 	currentEvt->cfdTime	= cfdTime;
 	currentEvt->eventTimeHi = highTime;
 	currentEvt->eventTimeLo = lowTime;
 	currentEvt->time = highTime * HIGH_MULT + lowTime;
+	currentEvt->eventTime = currentEvt->time;
 
 	// Check if trace data follows the channel header
 	if( traceLength > 0 ){

@@ -25,7 +25,6 @@ XiaData::XiaData(XiaData *other_){
 
 	modNum = other_->modNum;
 	chanNum = other_->chanNum;
-	trigTime = other_->trigTime;
 	cfdTime = other_->cfdTime;
 	eventTimeLo = other_->eventTimeLo;
 	eventTimeHi = other_->eventTimeHi;
@@ -97,7 +96,6 @@ void XiaData::clear(){
 	
 	modNum = 0;
 	chanNum = 0;
-	trigTime = 0;
 	cfdTime = 0;
 	eventTimeLo = 0;
 	eventTimeHi = 0;
@@ -139,19 +137,21 @@ size_t XiaData::getEventLength(){
 	return eventLength;
 }
 
-/** Write a pixie style event to a binary output file.
+/** Write a pixie style event to a binary output file. Output data may
+  * be written to both an ofstream and a character array. One of the
+  * pointers must not be NULL.
   * 
-  * \param[in] file_ Reference to an ofstream output binary file.
+  * \param[in] file_ Pointer to an ofstream output binary file.
+  * \param[in] array_ Pointer to a character array into which data will be written.
   * \return The number of bytes written to the file upon success and -1 otherwise.
   */
-int XiaData::writeRaw(std::ofstream &file_){
-	if(!file_.good()) return -1;
+int XiaData::writeRaw(std::ofstream *file_, char *array_){
+	if((!file_ && !array_) || !file_->good()) return -1;
 
 	unsigned int crateNum = 0x0; // Fixed value for now.
 	unsigned int chanIdentifier = 0xFFFFFFFF;
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
 	unsigned int eventEnergyWord = 0xFFFFFFFF;
-	unsigned long long eventTimeLL;
 	unsigned long long eventEnergyLL;
 
 	unsigned int eventLength = (unsigned int)getEventLength();
@@ -164,17 +164,15 @@ int XiaData::writeRaw(std::ofstream &file_){
 	chanIdentifier &= ~(0x0001F000 & (headLength << 12));     // Header length
 	chanIdentifier &= ~(0x1FFE0000 & (eventLength << 17));    // Event length
 	chanIdentifier &= ~(0x20000000 & (virtualChannel << 29)); // Virtual channel bit
-	chanIdentifier &= ~(0x40000000 & (eventLength << 30));    // Saturated channel bit
-	chanIdentifier &= ~(0x80000000 & (eventLength << 31));    // Pileup bit
+	chanIdentifier &= ~(0x40000000 & (saturatedBit << 30));    // Saturated channel bit
+	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));    // Pileup bit
 	chanIdentifier = ~chanIdentifier;
 	
 	// Build up the low event time.
-	memcpy((char *)&eventTimeLL, (char *)&eventTime, 8);
-	eventTimeLo = eventTimeLL >> 32;
+	eventTimeLo = (eventTime & 0x00000000FFFFFFFF);
 	
 	// Build up the high event time and CFD time.
-	eventTimeHi = (eventTimeLL & 0x0000FFFF);
-	cfdTime     = (eventTimeLL & 0xFFFF0000) >> 16;
+	eventTimeHi = (eventTime >> 32);
 	eventTimeHiWord &= ~(0x0000FFFF & (eventTimeHi));
 	eventTimeHiWord &= ~(0xFFFF0000 & (cfdTime << 16));
 	eventTimeHiWord = ~eventTimeHiWord;
@@ -185,23 +183,35 @@ int XiaData::writeRaw(std::ofstream &file_){
 	eventEnergyWord &= ~(0xFFFF0000 & (traceLength << 16));
 	eventEnergyWord = ~eventEnergyWord;
 	
-	// Write data to the output file.
-	file_.write((char *)&chanIdentifier, 4);
-	file_.write((char *)&eventTimeLo, 4);
-	file_.write((char *)&eventTimeHiWord, 4);
-	file_.write((char *)&eventEnergyWord, 4);
+	if(file_){
+		// Write data to the output file.
+		file_->write((char *)&chanIdentifier, 4);
+		file_->write((char *)&eventTimeLo, 4);
+		file_->write((char *)&eventTimeHiWord, 4);
+		file_->write((char *)&eventEnergyWord, 4);
+	}
+	
+	if(array_){
+		// Write data to the character array.
+		memcpy(array_, (char *)&chanIdentifier, 4);
+		memcpy(&array_[4], (char *)&eventTimeLo, 4);
+		memcpy(&array_[8], (char *)&eventTimeHiWord, 4);
+		memcpy(&array_[12], (char *)&eventEnergyWord, 4);
+	}
 
 	int numBytes = 16;
 
 	// Write the onbard QDCs, if enabled.
 	if(numQdcs > 0){
-		file_.write((char *)qdcValue, numQdcs*4);
+		if(file_) file_->write((char *)qdcValue, numQdcs*4);
+		if(array_) memcpy(&array_[numBytes], (char *)qdcValue, numQdcs*4);
 		numBytes += numQdcs*4;
 	}
 
 	// Write the ADC trace, if enabled.
 	if(traceLength != 0){ // Write the trace.
-		file_.write((char *)adcTrace, traceLength*2);
+		if(file_) file_->write((char *)adcTrace, traceLength*2);
+		if(array_) memcpy(&array_[numBytes], (char *)adcTrace, traceLength*2);
 		numBytes += traceLength*2;
 	}
 	
