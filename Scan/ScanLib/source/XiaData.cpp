@@ -458,13 +458,16 @@ void ChannelEvent::Clear(){
   */
 bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 	chanNum  =  (buf[bufferIndex] & 0x0000000F);
-	slotNum  =  (buf[bufferIndex] & 0x000000F0) >> 4;
+	modNum   =  (buf[bufferIndex] & 0x000000F0) >> 4;
 	crateNum =  (buf[bufferIndex] & 0x00000F00) >> 8;
 	/*flags[0] = ((buf[bufferIndex] & 0x00001000) != 0);
 	flags[1] = ((buf[bufferIndex] & 0x00002000) != 0);
 	flags[2] = ((buf[bufferIndex] & 0x00004000) != 0);	
 	flags[3] = ((buf[bufferIndex] & 0x00008000) != 0);*/
 	traceLength = (buf[bufferIndex] & 0xFFFF0000) >> 16;
+
+	// The slot number shouldn't be needed, but just for completeness.
+	slotNum = modNum;
 
 	eventTimeLo =  buf[bufferIndex + 1];
 	eventTimeHi =  buf[bufferIndex + 2] & 0x0000FFFF;
@@ -481,6 +484,14 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 	
 	maximum   = (buf[bufferIndex + 9] & 0x0000FFFF) - baseline;
 	max_index = (buf[bufferIndex + 9] & 0xFFFF0000) >> 16;
+
+	bufferIndex += 10;
+
+	// Read the ADC trace, if enabled.
+	if(traceLength != 0){ // Write the trace.
+		copyTrace((char *)&buf[bufferIndex], traceLength);
+		bufferIndex += (traceLength / 2);
+	}
 
 	return true;
 }
