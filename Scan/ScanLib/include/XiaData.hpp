@@ -88,19 +88,19 @@ public:
 
 	/** Responsible for decoding individual pixie events from a binary input file.
 	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[in]  module      The current module number being scanned.
 	  * \param[out] bufferIndex The current index in the module buffer.
 	  * \return Only false currently. This method is only a stub.
 	  */
-	bool readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
+	bool readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int module=9999);
 
 	/** Responsible for decoding individual pixie events from a binary input file.
 	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[in]  module      The current module number being scanned.
 	  * \param[out] bufferIndex The current index in the module buffer.
 	  * \return True if the event was successfully read, or false otherwise.
 	  */
-	bool readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
+	bool readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int module=9999);
     
 	/** Write a pixie style event to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the

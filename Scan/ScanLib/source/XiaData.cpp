@@ -133,21 +133,21 @@ void XiaData::print(){
 
 /** Responsible for decoding individual pixie events from a binary input file.
   * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  modNum     The current module number being scanned.
+  * \param[in]  module      The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
   * \return Only false currently. This method is only a stub.
   */
-bool XiaData::readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){
+bool XiaData::readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int module/*=9999*/){
 	return false;
 }
 
 /** Responsible for decoding individual pixie events from a binary input file.
   * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  modNum     The current module number being scanned.
+  * \param[in]  module      The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
   * \return True if the event was successfully read, or false otherwise.
   */
-bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){	
+bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int module/*=9999*/){	
 	// Multiplier for high bits of 48-bit time
 	static const double HIGH_MULT = pow(2., 32.); 
 
@@ -174,11 +174,11 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 	// Calculate the 48-bit trigger time.	
 	time = eventTimeHi * HIGH_MULT + eventTimeLo;
 
-	// Handle multiple crates
-	modNum = modNum + 100 * crateNum; 
+	if(module == 9999) modNum = slotNum;
+	else modNum = module;
 
-	if(modNum == 9999)
-		modNum = slotNum;
+	// Handle multiple crates.
+	modNum += 100 * crateNum;
 
 	// Rev. D header lengths not clearly defined in pixie16app_defs
 	//! magic numbers here for now
