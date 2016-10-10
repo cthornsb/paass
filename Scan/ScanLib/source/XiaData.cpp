@@ -289,11 +289,7 @@ int XiaData::writeEventRevF(std::ofstream *file_, char *array_){
 	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));      // Pileup bit
 	chanIdentifier = ~chanIdentifier;
 	
-	// Build up the low event time.
-	eventTimeLo = (time & 0x00000000FFFFFFFF);
-	
 	// Build up the high event time and CFD time.
-	eventTimeHi = (time >> 32);
 	eventTimeHiWord &= ~(0x0000FFFF & (eventTimeHi));
 	eventTimeHiWord &= ~(0xFFFF0000 & (cfdTime << 16));
 	eventTimeHiWord = ~eventTimeHiWord;
