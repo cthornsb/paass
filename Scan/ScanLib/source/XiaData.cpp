@@ -439,6 +439,8 @@ float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, 
 }
 
 void ChannelEvent::Clear(){
+	hiresTime = 0.0;
+
 	phase = -9999;
 	maximum = -9999;
 	baseline = -9999;

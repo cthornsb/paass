@@ -136,12 +136,15 @@ public:
     bool valid_chan; /// True if the high resolution energy and time are valid.
     bool ignore; /// Ignore this event.
     
+    double hiresTime; /// High resolution time obtained from the trigger time and the trace phase.
+    
     float phase; /// Phase (leading edge) of trace (in ADC clock ticks (4E-9 Hz for 250 MHz digitizer)).
     float baseline; /// The baseline of the trace.
     float stddev; /// Standard deviation of the baseline.
     float maximum; /// The baseline corrected maximum value of the trace.
     float qdc; /// The calculated (baseline corrected) qdc.
-    size_t max_index; /// The index of the maximum trace bin (in ADC clock ticks).
+    
+	unsigned short max_index; /// The index of the maximum trace bin (in ADC clock ticks).
     
     float *cfdvals; ///
     
