@@ -191,6 +191,13 @@ bool Unpacker::IsEmpty(){
 	return true;
 }
 
+/** Return a pointer to a new XiaData channel event.
+  * \return A pointer to a new XiaData.
+  */
+XiaData *Unpacker::GetNewEvent(){ 
+	return (new XiaData()); 
+}
+
 /** Process all events in the event list.
   * \param[in]  addr_ Pointer to a ScanInterface object. Unused by default.
   * \return Nothing.
@@ -478,12 +485,10 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 	unsigned int bufIndex = 0;
 
 	while( bufIndex < nWords ){
-		XiaData *currentEvt = new XiaData();
+		XiaData *currentEvt = GetNewEvent();
 	
-		//if(!currentEvt->readEventRevD(data, bufIndex)){
-		if(!currentEvt->readEventRevF(data, bufIndex)){
-			//std::cout << "ReadRawEvent: ERROR - XiaData::readBufferRevD failed to read event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
-			std::cout << "ReadRawEvent: ERROR - XiaData::readBufferRevF failed to read event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+		if(!currentEvt->readEvent(data, bufIndex)){
+			std::cout << "ReadRawEvent: ERROR - readEvent failed to read event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
 			delete currentEvt;
 			continue;
 		}

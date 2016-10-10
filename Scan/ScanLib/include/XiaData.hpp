@@ -83,8 +83,10 @@ public:
 	/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
     size_t getEventLength();
 
-	/** Called from ReadSpillModule. Responsible for decoding individual pixie
-	  * events a binary input file.
+    /// Print event information to the screen.
+    void print();
+
+	/** Responsible for decoding individual pixie events from a binary input file.
 	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
 	  * \param[in]  modNum     The current module number being scanned.
 	  * \param[out] bufferIndex The current index in the module buffer.
@@ -92,8 +94,7 @@ public:
 	  */
 	bool readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
 
-	/** Called from ReadSpillModule. Responsible for decoding individual pixie
-	  * events a binary input file.
+	/** Responsible for decoding individual pixie events from a binary input file.
 	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
 	  * \param[in]  modNum     The current module number being scanned.
 	  * \param[out] bufferIndex The current index in the module buffer.
@@ -111,8 +112,23 @@ public:
 	  */
     int writeEventRevF(std::ofstream *file_, char *array_);
     
-    /// Print event information to the screen.
-    void print();
+	/** Responsible for decoding events with arbitrary formatting from a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return False by default.
+	  */
+    virtual bool readEvent(unsigned int *buf, unsigned int &bufferIndex){ return false; }
+    
+	/** Write an arbitrary event to a binary output file. Output data may
+	  * be written to both an ofstream and a character array. One of the
+	  * pointers must not be NULL.
+	  * 
+	  * \param[in] file_ Pointer to an ofstream output binary file.
+	  * \param[in] array_ Pointer to a character array into which data will be written.
+	  * \return -1 by default.
+	  */
+    virtual int writeEvent(std::ofstream *file_, char *array_){ return -1; }
 };
 
 class ChannelEvent : public XiaData {
@@ -149,6 +165,24 @@ public:
     
     /// Clear all variables and clear the trace vector and arrays.
     void Clear();
+    
+	/** Responsible for decoding ChannelEvents from a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return True if the event was successfully read, or false otherwise.
+	  */
+	bool readEvent(unsigned int *buf, unsigned int &bufferIndex);
+
+	/** Write a ChannelEvent to a binary output file. Output data may
+	  * be written to both an ofstream and a character array. One of the
+	  * pointers must not be NULL.
+	  * 
+	  * \param[in] file_ Pointer to an ofstream output binary file.
+	  * \param[in] array_ Pointer to a character array into which data will be written.
+	  * \return The number of bytes written to the file upon success and -1 otherwise.
+	  */
+	int writeEvent(std::ofstream *file_, char *array_);
 };
 
 #endif

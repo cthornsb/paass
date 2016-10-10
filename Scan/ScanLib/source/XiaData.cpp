@@ -117,8 +117,21 @@ size_t XiaData::getEventLength(){
 	return eventLength;
 }
 
-/** Called from ReadSpillModule. Responsible for decoding individual pixie
-  * events a binary input file.
+/// Print event information to the screen.
+void XiaData::print(){
+	std::cout << " energy:      " << this->energy << std::endl;
+	std::cout << " time:        " << this->time << std::endl;
+	std::cout << " traceLength: " << this->traceLength << std::endl;
+	std::cout << " numQdcs:     " << this->numQdcs << std::endl;
+	std::cout << " slotNum:     " << this->slotNum << std::endl;
+	std::cout << " modNum:      " << this->modNum << std::endl;
+	std::cout << " chanNum:     " << this->chanNum << std::endl;
+	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
+	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
+	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
+}
+
+/** Responsible for decoding individual pixie events from a binary input file.
   * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
   * \param[in]  modNum     The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
@@ -128,8 +141,7 @@ bool XiaData::readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsign
 	return false;
 }
 
-/** Called from ReadSpillModule. Responsible for decoding individual pixie
-  * events a binary input file.
+/** Responsible for decoding individual pixie events from a binary input file.
   * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
   * \param[in]  modNum     The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
@@ -326,20 +338,6 @@ int XiaData::writeEventRevF(std::ofstream *file_, char *array_){
 	return numBytes;
 }
 
-/// Print event information to the screen.
-void XiaData::print(){
-	std::cout << " energy:      " << this->energy << std::endl;
-	std::cout << " time:        " << this->time << std::endl;
-	std::cout << " traceLength: " << this->traceLength << std::endl;
-	std::cout << " numQdcs:     " << this->numQdcs << std::endl;
-	std::cout << " slotNum:     " << this->slotNum << std::endl;
-	std::cout << " modNum:      " << this->modNum << std::endl;
-	std::cout << " chanNum:     " << this->chanNum << std::endl;
-	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
-	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
-	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
-}
-
 /////////////////////////////////////////////////////////////////////
 // ChannelEvent
 /////////////////////////////////////////////////////////////////////
@@ -455,4 +453,26 @@ void ChannelEvent::Clear(){
 	
 	if(cfdvals) 
 		delete[] cfdvals;
+}
+
+/** Responsible for decoding ChannelEvents from a binary input file.
+  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  modNum     The current module number being scanned.
+  * \param[out] bufferIndex The current index in the module buffer.
+  * \return True if the event was successfully read, or false otherwise.
+  */
+bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
+	return false;
+}
+
+/** Write a ChannelEvent to a binary output file. Output data may
+  * be written to both an ofstream and a character array. One of the
+  * pointers must not be NULL.
+  * 
+  * \param[in] file_ Pointer to an ofstream output binary file.
+  * \param[in] array_ Pointer to a character array into which data will be written.
+  * \return The number of bytes written to the file upon success and -1 otherwise.
+  */
+int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
+	return -1;
 }

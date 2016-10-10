@@ -118,6 +118,11 @@ class Unpacker{
 
 	ScanInterface *interface; /// Pointer to an object derived from ScanInterface.
 
+	/** Return a pointer to a new XiaData channel event.
+	  * \return A pointer to a new XiaData.
+	  */
+	virtual XiaData *GetNewEvent();
+
 	/** Process all events in the event list.
 	  * \param[in]  addr_ Pointer to a ScanInterface object. Unused by default.
 	  * \return Nothing.
