@@ -36,7 +36,7 @@ XiaData::XiaData(XiaData *other_){
 	cfdTrigSource = other_->cfdTrigSource; 
 
 	// Copy the ADC trace, if enabled.
-	if(traceLength > 0)
+	if(other_->traceLength > 0)
 		copyTrace((char *)other_->adcTrace, other_->traceLength);
 
 	// Copy the onboard QDCs, if enabled.
