@@ -18,7 +18,7 @@
  */
 class XiaData{
 public:
-    unsigned int energy; /// Raw pixie energy.
+    unsigned short energy; /// Raw pixie energy.
     unsigned long long time; /// Raw pixie event time. Measured in filter clock ticks (8E-9 Hz for RevF).
     
     size_t traceLength;
@@ -27,10 +27,14 @@ public:
     size_t numQdcs; /// Number of QDCs onboard.
     unsigned int *qdcValue; /// QDCs from onboard.
     
-    unsigned int slotNum; ///Slot number
-    unsigned int modNum; /// Module number.
-    unsigned int chanNum; /// Channel number.
-    unsigned int cfdTime; /// CFD trigger time in units of 1/256 pixie clock ticks.
+    unsigned short headerLength; /// Length of the pixie header in words.
+    unsigned short eventLength; /// Length of the total event in words.
+    
+    unsigned short crateNum; /// Crate number.
+    unsigned short slotNum; ///Slot number (not the same as the module number).
+    unsigned short modNum; /// Module number (not the same as the slot number).
+    unsigned short chanNum; /// Channel number.
+    unsigned short cfdTime; /// CFD trigger time in units of 1/256 pixie clock ticks.
     unsigned int eventTimeLo; /// Lower 32 bits of pixie16 event time.
     unsigned int eventTimeHi; /// Upper 32 bits of pixie16 event time.
     
@@ -52,20 +56,11 @@ public:
     /// Get the event ID number (mod * chan).
     int getID(){ return(modNum*16+chanNum); }
     
-    /// Reserve specified number of bins for the channel trace.
-    void reserve(const size_t &size_);
-    
-    /// Fill the trace vector with a specified value.
-    void assign(const unsigned short &input_);
-
 	/// Fill the trace by reading from a character array.
-	void copyTrace(char *ptr_);
-
-	/// Fill the trace by reading from a character array.
-	void copyTrace(char *ptr_, const size_t &size_);	
+	void copyTrace(char *ptr_, const unsigned short &size_);
 
 	/// Fill the QDC array by reading a character array.
-	void copyQDCs(char *ptr_, const size_t &size_);
+	void copyQDCs(char *ptr_, const unsigned short &size_);
 
     /// Return true if the time of arrival for rhs is later than that of lhs.
     static bool compareTime(XiaData *lhs, XiaData *rhs){ return (lhs->time < rhs->time); }
@@ -87,6 +82,24 @@ public:
     
 	/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
     size_t getEventLength();
+
+	/** Called from ReadSpillModule. Responsible for decoding individual pixie
+	  * events a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return Only false currently. This method is only a stub.
+	  */
+	bool readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
+
+	/** Called from ReadSpillModule. Responsible for decoding individual pixie
+	  * events a binary input file.
+	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
+	  * \param[in]  modNum     The current module number being scanned.
+	  * \param[out] bufferIndex The current index in the module buffer.
+	  * \return True if the event was successfully read, or false otherwise.
+	  */
+	bool readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum=9999);
     
 	/** Write a pixie style event to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the
@@ -96,10 +109,10 @@ public:
 	  * \param[in] array_ Pointer to a character array into which data will be written.
 	  * \return The number of bytes written to the file upon success and -1 otherwise.
 	  */
-    int writeRaw(std::ofstream *file_, char *array_);
+    int writeEventRevF(std::ofstream *file_, char *array_);
     
     /// Print event information to the screen.
-    void Print();
+    void print();
 };
 
 class ChannelEvent : public XiaData {

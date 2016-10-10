@@ -132,8 +132,8 @@ bool Unpacker::AddEvent(XiaData *event_){
 	if(event_->modNum > MAX_PIXIE_MOD){ return false; }
 	
 	// Check for the need to add a new deque to the event list.
-	if(event_->modNum+1 > (unsigned int)eventList.size()){
-		while (eventList.size() < event_->modNum + 1) {
+	if(event_->modNum+1 > (unsigned short)eventList.size()){
+		while ((unsigned short)eventList.size() < event_->modNum + 1) {
 			eventList.push_back(std::deque<XiaData*>());
 		}
 	}
@@ -227,15 +227,18 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 			return 0;
 		}
 		while( bufIndex < bufLen ){
-			//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex, modNum);
-			XiaData *currentEvt = this->ReadEventRevF(buf, bufIndex, modNum);
-			
-			// Check that the current event is defined.
-			if(currentEvt == NULL){
-				//std::cout << "ReadSpillModule: ERROR - ReadBufferRevD returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
-				std::cout << "ReadSpillModule: ERROR - ReadBufferRevF returned NULL! Module=" << modNum << ", bufLen=" << bufLen << std::endl;
+			XiaData *currentEvt = new XiaData();
+
+			//if(!currentEvt->readEventRevD(buf, bufIndex, modNum)){
+			if(!currentEvt->readEventRevF(buf, bufIndex, modNum)){
+				//std::cout << "ReadSpillModule: ERROR - XiaData::readBufferRevD failed to read event! Module=" << modNum << ", bufIndex=" << bufIndex << ", bufLen=" << bufLen << std::endl;
+				std::cout << "ReadSpillModule: ERROR - XiaData::readBufferRevF failed to read event! Module=" << modNum << ", bufIndex=" << bufIndex << ", bufLen=" << bufLen << std::endl;
+				delete currentEvt;
 				continue;
 			}
+
+			// Does not handle multiple crates! CRT
+			channel_counts[currentEvt->modNum][currentEvt->chanNum]++;
 			
 			// Add the event to the event list.
 			AddEvent(currentEvt);
@@ -248,138 +251,6 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 	}
 	
 	return numEvents;
-}
-
-/** Called from ReadSpillModule. Responsible for decoding individual pixie
-  * events a binary input file.
-  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  modNum     The current module number being scanned.
-  * \param[out] bufferIndex The current index in the module buffer.
-  * \return Only NULL currently. This method is only a stub.
-  */
-XiaData *Unpacker::ReadEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){
-	return NULL;
-}
-
-/** Called from ReadSpillModule. Responsible for decoding individual pixie
-  * events a binary input file.
-  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  modNum     The current module number being scanned.
-  * \param[out] bufferIndex The current index in the module buffer.
-  * \return Only NULL currently. This method is only a stub.
-  */
-XiaData *Unpacker::ReadEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int modNum/*=9999*/){	
-	// Multiplier for high bits of 48-bit time
-	static const double HIGH_MULT = pow(2., 32.); 
-
-	// Decoding event data... see pixie16app.c
-	// buf points to the start of channel data
-	unsigned int chanNum      = (buf[bufferIndex] & 0x0000000F);
-	unsigned int slotNum      = (buf[bufferIndex] & 0x000000F0) >> 4;
-	unsigned int crateNum     = (buf[bufferIndex] & 0x00000F00) >> 8;
-	unsigned int headerLength = (buf[bufferIndex] & 0x0001F000) >> 12;
-	unsigned int eventLength  = (buf[bufferIndex] & 0x1FFE0000) >> 17;
-
-	unsigned int lowTime      =  buf[bufferIndex + 1];
-	unsigned int highTime     =  buf[bufferIndex + 2] & 0x0000FFFF;
-	unsigned int cfdTime      = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
-	unsigned int energy       =  buf[bufferIndex + 3] & 0x0000FFFF;
-	unsigned int traceLength  = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
-
-	if(modNum == 9999)
-		modNum = slotNum;
-
-	// Rev. D header lengths not clearly defined in pixie16app_defs
-	//! magic numbers here for now
-	if(headerLength == 1){
-		// this is a manual statistics block inserted by the poll program
-		/*stats.DoStatisticsBlock(&buf[bufferIndex + 1], modNum);
-		numEvents = -10;*/
-		
-		// Advance to next event.
-		bufferIndex += eventLength;
-		return NULL;
-	}
-	
-	// Check that the header length is valid.
-	if(headerLength != 4 && headerLength != 8 && headerLength != 12 && headerLength != 16){
-		std::cout << "ReadEventRevF: Unexpected header length: " << headerLength << std::endl;
-		std::cout << "ReadEventRevF:  Module " << modNum << std::endl;
-		std::cout << "ReadEventRevF:  CHAN:SLOT:CRATE " << chanNum << ":" << slotNum << ":" << crateNum << std::endl;
-		
-		// Advance to next event.
-		bufferIndex += eventLength;
-		return NULL;
-	}
-
-	// One last check on the event length.
-	if( traceLength / 2 + headerLength != eventLength ){
-		std::cout << "ReadEventRevF: Bad event length (" << eventLength << ") does not correspond with length of header (";
-		std::cout << headerLength << ") and length of trace (" << traceLength << ")" << std::endl;
-		
-		// Advance to next event.
-		bufferIndex += eventLength;
-		return NULL;
-	}
-
-	// Define a new XiaData event.
-	XiaData *currentEvt = new XiaData();
-
-	currentEvt->virtualChannel = ((buf[bufferIndex] & 0x20000000) != 0);
-	currentEvt->saturatedBit   = ((buf[bufferIndex] & 0x40000000) != 0);
-	currentEvt->pileupBit      = ((buf[bufferIndex] & 0x80000000) != 0);
-
-	// Move the buffer index past the header.
-	bufferIndex += 4;
-
-	if(headerLength == 8 || headerLength == 16){
-		// Skip the onboard partial sums for now 
-		// trailing, leading, gap, baseline
-		bufferIndex += 4;
-	}
-
-	if(headerLength >= 12){ // Copy the QDCs.
-		currentEvt->copyQDCs((char *)&buf[bufferIndex], 8);
-		bufferIndex += 8;
-	}
-
-	currentEvt->chanNum = chanNum;
-	currentEvt->slotNum = slotNum;
-	currentEvt->modNum = modNum + 100 * crateNum; // Handle multiple crates
-	/*if(currentEvt->virtualChannel){
-		DetectorLibrary* modChan = DetectorLibrary::get();
-
-		currentEvt->modNum += modChan->GetPhysicalModules();
-		if(modChan->at(modNum, chanNum).HasTag("construct_trace")){
-			lastVirtualChannel = currentEvt;
-		}
-	}*/
-
-	// Does not handle multiple crates! CRT
-	channel_counts[modNum][chanNum]++;
-
-	currentEvt->energy = energy;
-	if(currentEvt->saturatedBit){ currentEvt->energy = 16383; }
-			
-	currentEvt->cfdTime	= cfdTime;
-	currentEvt->eventTimeHi = highTime;
-	currentEvt->eventTimeLo = lowTime;
-	currentEvt->time = highTime * HIGH_MULT + lowTime;
-
-	// Check if trace data follows the channel header
-	if( traceLength > 0 ){
-		/*if(currentEvt->saturatedBit)
-			currentEvt->trace.SetValue("saturation", 1);*/
-
-		/*if( lastVirtualChannel != NULL && lastVirtualChannel->traceLength == 0 ){		
-			lastVirtualChannel->assign(0);
-		}*/
-		// Read the trace data (2-bytes per sample, i.e. 2 samples per word)
-		currentEvt->copyTrace((char *)&buf[bufferIndex], traceLength);
-		bufferIndex += (traceLength / 2);
-	}
-	
-	return currentEvt;
 }
 
 Unpacker::Unpacker() :
@@ -607,13 +478,13 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 	unsigned int bufIndex = 0;
 
 	while( bufIndex < nWords ){
-		//XiaData *currentEvt = this->ReadEventRevD(buf, bufIndex);
-		XiaData *currentEvt = this->ReadEventRevF(data, bufIndex);
-		
-		// Check that the current event is defined.
-		if(currentEvt == NULL){
-			//std::cout << "ReadRawEvent: ERROR - ReadEventRevD returned NULL event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
-			std::cout << "ReadRawEvent: ERROR - ReadEventRevF returned NULL event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+		XiaData *currentEvt = new XiaData();
+	
+		//if(!currentEvt->readEventRevD(data, bufIndex)){
+		if(!currentEvt->readEventRevF(data, bufIndex)){
+			//std::cout << "ReadRawEvent: ERROR - XiaData::readBufferRevD failed to read event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+			std::cout << "ReadRawEvent: ERROR - XiaData::readBufferRevF failed to read event! numRawEvt=" << numRawEvt << ", bufIndex=" << bufIndex << ", nWords=" << nWords << std::endl;
+			delete currentEvt;
 			continue;
 		}
 		
@@ -624,6 +495,9 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 		// Check for the maximum time in this raw event.
 		if(currentEvt->time > realStopTime) 
 			realStopTime = currentEvt->time;
+
+		// Does not handle multiple crates! CRT
+		channel_counts[currentEvt->modNum][currentEvt->chanNum]++;
 
 		// Update raw stats output with the new event before adding it to the raw event.
 		RawStats(currentEvt);			
