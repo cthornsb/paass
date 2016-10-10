@@ -80,9 +80,6 @@ public:
     /// Delete the QDC array.
     void clearQDCs();
     
-	/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
-    size_t getEventLength();
-
     /// Print event information to the screen.
     void print();
 
@@ -101,6 +98,9 @@ public:
 	  * \return True if the event was successfully read, or false otherwise.
 	  */
 	bool readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int module=9999);
+
+	/// Get the size of the XiaData event when written to disk by ::writeEventRevF (in 4-byte words).
+	size_t getEventLengthRevF();
     
 	/** Write a pixie style event to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the
@@ -119,6 +119,9 @@ public:
 	  * \return False by default.
 	  */
     virtual bool readEvent(unsigned int *buf, unsigned int &bufferIndex){ return false; }
+
+	/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
+	virtual size_t getEventLength(){ return 0; }
     
 	/** Write an arbitrary event to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the
@@ -176,6 +179,9 @@ public:
 	  * \return True if the event was successfully read, or false otherwise.
 	  */
 	bool readEvent(unsigned int *buf, unsigned int &bufferIndex);
+
+	/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
+	size_t getEventLength();
 
 	/** Write a ChannelEvent to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the

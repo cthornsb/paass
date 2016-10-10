@@ -109,14 +109,6 @@ void XiaData::clearQDCs(){
 	qdcValue = NULL;
 }
 
-/// Get the size of the XiaData event when written to disk by ::writeRaw (in 4-byte words).
-size_t XiaData::getEventLength(){
-	size_t eventLength = 4;
-	if(numQdcs > 0) eventLength += numQdcs; // Account for the onboard QDCs.
-	if(traceLength > 0) eventLength += traceLength/2; // Account for the ADC trace.
-	return eventLength;
-}
-
 /// Print event information to the screen.
 void XiaData::print(){
 	std::cout << " energy:      " << this->energy << std::endl;
@@ -148,9 +140,6 @@ bool XiaData::readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsign
   * \return True if the event was successfully read, or false otherwise.
   */
 bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int module/*=9999*/){	
-	// Multiplier for high bits of 48-bit time
-	static const double HIGH_MULT = pow(2., 32.); 
-
 	// Decoding event data... see pixie16app.c
 	// buf points to the start of channel data
 	chanNum        =  (buf[bufferIndex] & 0x0000000F);
@@ -171,13 +160,13 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 	// Handle saturated filter energy.
 	if(saturatedBit){ energy = 16383; }
 		
-	// Calculate the 48-bit trigger time.	
-	time = eventTimeHi * HIGH_MULT + eventTimeLo;
+	// Calculate the 48-bit trigger time.
+	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
 
 	if(module == 9999) modNum = slotNum;
 	else modNum = module;
 
-	// Handle multiple crates.
+	// Handle multiple crates
 	modNum += 100 * crateNum;
 
 	// Rev. D header lengths not clearly defined in pixie16app_defs
@@ -257,6 +246,14 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 	}
 	
 	return true;
+}
+
+/// Get the size of the XiaData event when written to disk by ::writeEventRevF (in 4-byte words).
+size_t XiaData::getEventLengthRevF(){
+	size_t eventLength = 4;
+	if(numQdcs > 0) eventLength += numQdcs; // Account for the onboard QDCs.
+	if(traceLength > 0) eventLength += traceLength/2; // Account for the ADC trace.
+	return eventLength;
 }
 
 /** Write a pixie style event to a binary output file. Output data may
@@ -460,7 +457,37 @@ void ChannelEvent::Clear(){
   * \return True if the event was successfully read, or false otherwise.
   */
 bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
-	return false;
+	chanNum  =  (buf[bufferIndex] & 0x0000000F);
+	slotNum  =  (buf[bufferIndex] & 0x000000F0) >> 4;
+	crateNum =  (buf[bufferIndex] & 0x00000F00) >> 8;
+	/*flags[0] = ((buf[bufferIndex] & 0x00001000) != 0);
+	flags[1] = ((buf[bufferIndex] & 0x00002000) != 0);
+	flags[2] = ((buf[bufferIndex] & 0x00004000) != 0);	
+	flags[3] = ((buf[bufferIndex] & 0x00008000) != 0);*/
+	traceLength = (buf[bufferIndex] & 0xFFFF0000) >> 16;
+
+	eventTimeLo =  buf[bufferIndex + 1];
+	eventTimeHi =  buf[bufferIndex + 2] & 0x0000FFFF;
+	energy      = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
+
+	// Calculate the 48-bit trigger time.	
+	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
+
+	memcpy((char *)&hiresTime, (char *)&buf[bufferIndex + 3], 8);
+	memcpy((char *)&phase, (char *)&buf[bufferIndex + 5], 4);
+	memcpy((char *)&baseline, (char *)&buf[bufferIndex + 6], 4);
+	memcpy((char *)&stddev, (char *)&buf[bufferIndex + 7], 4);
+	memcpy((char *)&qdc, (char *)&buf[bufferIndex + 8], 4);
+	
+	maximum   = (buf[bufferIndex + 9] & 0x0000FFFF) - baseline;
+	max_index = (buf[bufferIndex + 9] & 0xFFFF0000) >> 16;
+
+	return true;
+}
+
+/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
+size_t ChannelEvent::getEventLength(){
+	return 10;
 }
 
 /** Write a ChannelEvent to a binary output file. Output data may
@@ -472,5 +499,74 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
   * \return The number of bytes written to the file upon success and -1 otherwise.
   */
 int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
-	return -1;
+	if((!file_ && !array_) || (file_ && !file_->good())) return -1;
+
+	const bool flags[4] = {false, false, false, false};
+	const unsigned short tlength = 0x0;
+	
+	unsigned short chanIdentifier = 0xFFFF;
+	unsigned int eventTimeHiWord = 0xFFFFFFFF;
+
+	// Build up the channel identifier.
+	chanIdentifier &= ~(0x000F & (chanNum));       // Pixie channel number
+	chanIdentifier &= ~(0x00F0 & (modNum << 4));   // Pixie module number (NOT the slot number)
+	chanIdentifier &= ~(0x0F00 & (crateNum << 8)); // Crate number
+	
+	// Activate channel flags.
+	if(flags[0]) chanIdentifier &= ~0x1;
+	if(flags[1]) chanIdentifier &= ~0x2;
+	if(flags[2]) chanIdentifier &= ~0x4;
+	if(flags[3]) chanIdentifier &= ~0x8;
+	chanIdentifier = ~chanIdentifier;
+
+	// Build up the high event time and CFD time.
+	eventTimeHiWord &= ~(0x0000FFFF & (eventTimeHi));
+	eventTimeHiWord &= ~(0xFFFF0000 & (energy << 16));
+	eventTimeHiWord = ~eventTimeHiWord;
+
+	// Get the un-baseline-corrected maximum ADC value.
+	unsigned short maxADCword = (unsigned short)(maximum + baseline);
+
+	if(file_){
+		// Write data to the output file.
+		file_->write((char *)&chanIdentifier, 2);
+		//file_->write((char *)&traceLength, 2);
+		file_->write((char *)&tlength, 2);
+		file_->write((char *)&eventTimeLo, 4);
+		file_->write((char *)&eventTimeHiWord, 4);
+		file_->write((char *)&hiresTime, 8);
+		file_->write((char *)&phase, 4);
+		file_->write((char *)&baseline, 4);
+		file_->write((char *)&stddev, 4);
+		file_->write((char *)&qdc, 4);
+		file_->write((char *)&maxADCword, 2);
+		file_->write((char *)&max_index, 2);
+	}
+	
+	if(array_){
+		// Write data to the character array.
+		memcpy(array_, (char *)&chanIdentifier, 2);
+		//memcpy(&array_[2], (char *)&traceLength, 2);
+		memcpy(&array_[2], (char *)&tlength, 2);
+		memcpy(&array_[4], (char *)&eventTimeLo, 4);
+		memcpy(&array_[8], (char *)&eventTimeHiWord, 4);
+		memcpy(&array_[12], (char *)&hiresTime, 8);
+		memcpy(&array_[20], (char *)&phase, 4);
+		memcpy(&array_[24], (char *)&baseline, 4);
+		memcpy(&array_[28], (char *)&stddev, 4);
+		memcpy(&array_[32], (char *)&qdc, 4);
+		memcpy(&array_[36], (char *)&maxADCword, 2);
+		memcpy(&array_[38], (char *)&max_index, 2);
+	}	
+
+	int numBytes = 40;
+
+	// Write the ADC trace, if enabled.
+	/*if(traceLength != 0){ // Write the trace.
+		if(file_) file_->write((char *)adcTrace, traceLength*2);
+		if(array_) memcpy(&array_[numBytes], (char *)adcTrace, traceLength*2);
+		numBytes += traceLength*2;
+	}*/
+
+	return numBytes;
 }
