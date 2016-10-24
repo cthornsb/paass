@@ -82,6 +82,9 @@ public:
     
     /// Print event information to the screen.
     void print();
+    
+    /// Print additional information to the screen.
+    virtual void print2(){ }
 
 	/** Responsible for decoding individual pixie events from a binary input file.
 	  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
@@ -192,6 +195,9 @@ public:
 	  * \return The number of bytes written to the file upon success and -1 otherwise.
 	  */
 	int writeEvent(std::ofstream *file_, char *array_);
+	
+    /// Print additional information to the screen.
+    virtual void print2();
 };
 
 #endif

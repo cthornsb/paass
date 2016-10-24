@@ -121,6 +121,7 @@ void XiaData::print(){
 	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
 	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
 	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
+	print2();
 }
 
 /** Responsible for decoding individual pixie events from a binary input file.
@@ -580,4 +581,14 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 	}*/
 
 	return numBytes;
+}
+
+/// Print additional information to the screen.
+void ChannelEvent::print2(){
+	std::cout << " hiresTime:   " << this->hiresTime << std::endl;
+	std::cout << " phase:       " << this->phase << std::endl;
+	std::cout << " baseline:    " << this->baseline << std::endl;
+	std::cout << " stddev:      " << this->stddev << std::endl;
+	std::cout << " maximum:     " << this->maximum << std::endl;
+	std::cout << " qdc:         " << this->qdc << std::endl;
 }
