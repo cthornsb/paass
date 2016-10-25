@@ -159,7 +159,7 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 	traceLength = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
 
 	// Handle saturated filter energy.
-	if(saturatedBit){ energy = 16383; }
+	if(saturatedBit){ energy = 32767; }
 		
 	// Calculate the 48-bit trigger time.
 	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
