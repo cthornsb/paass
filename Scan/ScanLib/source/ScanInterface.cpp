@@ -315,19 +315,7 @@ bool ScanInterface::open_input_file(const std::string &fname_){
   * \return Nothing.
   */
 void ScanInterface::AddOption(optionExt opt_){
-	char tempChar = opt_.val;
-	if(tempChar){
-		if(optstr.find(tempChar) != std::string::npos)
-			opt_.val = 0x0;
-		else{
-			optstr += tempChar;
-			if(opt_.has_arg == required_argument)
-				optstr += ":";
-			else if(opt_.has_arg == optional_argument)
-				optstr += "::";
-		}
-	}
-	userOpts.push_back(opt_);
+	addOption(opt_, userOpts, optstr);
 }
 
 /** SyntaxStr is used to print a linux style usage message to the screen.
@@ -1119,4 +1107,24 @@ std::string get_extension(std::string filename_, std::string &prefix){
 	}
 	
 	return output;
+}
+
+/** Add a command line option to the option list.
+  * \param[in]  opt_ The option to add to the list.
+  * \return Nothing.
+  */
+void addOption(optionExt opt_, std::vector<optionExt> &vec, std::string &optstr){
+	char tempChar = opt_.val;
+	if(tempChar){
+		if(optstr.find(tempChar) != std::string::npos)
+			opt_.val = 0x0;
+		else{
+			optstr += tempChar;
+			if(opt_.has_arg == required_argument)
+				optstr += ":";
+			else if(opt_.has_arg == optional_argument)
+				optstr += "::";
+		}
+	}
+	vec.push_back(opt_);
 }

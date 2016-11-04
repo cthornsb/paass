@@ -191,7 +191,7 @@ class ScanInterface{
 	  * \return Nothing.
 	  */
 	void AddOption(optionExt opt_);
-	
+
 	/** ExtraCommands is used to send command strings to classes derived
 	  * from ScanInterface. If ScanInterface receives an unrecognized
 	  * command from the user, it will pass it on to the derived class.
@@ -345,5 +345,11 @@ class ScanInterface{
 
 /// Get the file extension from an input filename string.
 std::string get_extension(std::string filename_, std::string &prefix);
+
+/** Add a command line option to the option list.
+  * \param[in]  opt_ The option to add to the list.
+  * \return Nothing.
+  */
+void addOption(optionExt opt_, std::vector<optionExt> &vec, std::string &optstr);
 
 #endif
