@@ -151,6 +151,7 @@ public:
     float qdc; /// The calculated (baseline corrected) qdc.
     
 	unsigned short max_index; /// The index of the maximum trace bin (in ADC clock ticks).
+	float realMax; /// The calculated maximum of the pulse.
     
     float *cfdvals; ///
     
@@ -201,6 +202,10 @@ public:
 };
 
 void calculateP2(const short &x0, unsigned short *y, float &p0, float &p1, float &p2);
+
+float calculateP2(const short &x0, unsigned short *y, float &Xmax);
+
+void calculateP3(const short &x0, unsigned short *y, float &p0, float &p1, float &p2, float &p3);
 
 float calculateP3(const short &x0, unsigned short *y, float &Xmax);
 
