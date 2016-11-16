@@ -43,6 +43,7 @@ public:
     bool saturatedBit; /// Saturation flag from Pixie.
     bool cfdForceTrig; /// CFD was forced to trigger.
     bool cfdTrigSource; /// The ADC that the CFD/FPGA synched with.
+	bool outOfRange; /// Set to true if the trace is saturated.
     
     /// Default constructor.
     XiaData();

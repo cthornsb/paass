@@ -34,6 +34,7 @@ XiaData::XiaData(XiaData *other_){
 	saturatedBit = other_->saturatedBit;
 	cfdForceTrig = other_->cfdForceTrig; 
 	cfdTrigSource = other_->cfdTrigSource; 
+	outOfRange = other_->outOfRange;
 
 	// Copy the ADC trace, if enabled.
 	if(other_->traceLength > 0)
@@ -86,6 +87,7 @@ void XiaData::clear(){
 	saturatedBit = false;
 	cfdForceTrig = false; 
 	cfdTrigSource = false; 
+	outOfRange = false;
 	
 	clearTrace();
 	clearQDCs();
@@ -156,7 +158,8 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 	eventTimeHi =  buf[bufferIndex + 2] & 0x0000FFFF;
 	cfdTime     = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
 	energy      =  buf[bufferIndex + 3] & 0x0000FFFF;
-	traceLength = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
+	traceLength = (buf[bufferIndex + 3] & 0x7FFF0000) >> 16;
+	outOfRange = ((buf[bufferIndex] & 0x80000000) != 0);
 
 	// Handle saturated filter energy.
 	if(saturatedBit){ energy = 32767; }
