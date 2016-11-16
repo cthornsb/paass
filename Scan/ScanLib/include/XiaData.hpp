@@ -200,4 +200,8 @@ public:
     virtual void print2();
 };
 
+void calculateP2(const short &x0, unsigned short *y, float &p0, float &p1, float &p2);
+
+float calculateP3(const short &x0, unsigned short *y, float &Xmax);
+
 #endif

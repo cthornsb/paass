@@ -377,7 +377,14 @@ float ChannelEvent::ComputeBaseline(){
 			max_index = i;
 		}
 	}
-	
+
+	// Find the pulse maximum by fitting with a third order polynomial.
+	float realMax;
+	if(adcTrace[max_index-1] >= adcTrace[max_index+1]) // Favor the left side of the pulse.
+		maximum = calculateP3(max_index-2, &adcTrace[max_index-2], realMax) - baseline;
+	else // Favor the right side of the pulse.
+		maximum = calculateP3(max_index-1, &adcTrace[max_index-1], realMax) - baseline;
+
 	return baseline;
 }
 
@@ -397,7 +404,7 @@ float ChannelEvent::IntegratePulse(const size_t &start_/*=0*/, const size_t &sto
 /// Perform CFD analysis on the waveform.
 float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, const size_t &L_/*=1*/){
 	if(traceLength == 0 || baseline < 0){ return -9999; }
-	if(!cfdvals)
+	/*if(!cfdvals)
 		cfdvals = new float[traceLength];
 	
 	float cfdMinimum = 9999;
@@ -426,6 +433,23 @@ float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, 
 				phase = cfdIndex - cfdvals[cfdIndex]/(cfdvals[cfdIndex+1]-cfdvals[cfdIndex]);
 				break;
 			}
+		}
+	}*/
+
+	float threshold = F_*maximum + baseline;
+
+	phase = -9999;
+	for(size_t cfdIndex = max_index; cfdIndex > 0; cfdIndex--){
+		if(adcTrace[cfdIndex-1] < threshold && adcTrace[cfdIndex] >= threshold){
+			float p0, p1, p2;
+
+			// Fit the rise of the trace to a 2nd order polynomial.
+			calculateP2(cfdIndex-1, &adcTrace[cfdIndex-1], p0, p1, p2);
+			
+			// Calculate the phase of the trace.
+			phase = (-p1+std::sqrt(p1*p1 - 4*p2*(p0 - threshold)))/(2*p2);
+
+			break;
 		}
 	}
 
@@ -592,3 +616,45 @@ void ChannelEvent::print2(){
 	std::cout << " maximum:     " << this->maximum << std::endl;
 	std::cout << " qdc:         " << this->qdc << std::endl;
 }
+
+void calculateP2(const short &x0, unsigned short *y, float &p0, float &p1, float &p2){
+	double x1[3], x2[3];
+	for(size_t i = 0; i < 3; i++){
+		x1[i] = (x0+i);
+		x2[i] = std::pow(x0+i, 2);
+	}
+
+	float denom = 1*(x1[1]*x2[2]-x2[1]*x1[2]) - x1[0]*(1*x2[2]-x2[1]*1) + x2[0]*(1*x1[2]-x1[1]*1);
+
+	p0 = (y[0]*(x1[1]*x2[2]-x2[1]*x1[2]) - x1[0]*(y[1]*x2[2]-x2[1]*y[2]) + x2[0]*(y[1]*x1[2]-x1[1]*y[2]))/denom;
+	p1 = (1*(y[1]*x2[2]-x2[1]*y[2]) - y[0]*(1*x2[2]-x2[1]*1) + x2[0]*(1*y[2]-y[1]*1))/denom;
+	p2 = (1*(x1[1]*y[2]-y[1]*x1[2]) - x1[0]*(1*y[2]-y[1]*1) + y[0]*(1*x1[2]-x1[1]*1))/denom;
+}
+
+float calculateP3(const short &x0, unsigned short *y, float &Xmax){
+	double x1[4], x2[4], x3[4];
+	for(size_t i = 0; i < 4; i++){
+		x1[i] = (x0+i);
+		x2[i] = std::pow(x0+i, 2);
+		x3[i] = std::pow(x0+i, 3);
+	}
+
+	double denom = 1*(x1[1]*(x2[2]*x3[3]-x2[3]*x3[2]) - x1[2]*(x2[1]*x3[3]-x2[3]*x3[1]) + x1[3]*(x2[1]*x3[2]-x2[2]*x3[1])) - x1[0]*(1*(x2[2]*x3[3]-x2[3]*x3[2]) - 1*(x2[1]*x3[3]-x2[3]*x3[1]) + 1*(x2[1]*x3[2]-x2[2]*x3[1])) + x2[0]*(1*(x1[2]*x3[3]-x1[3]*x3[2]) - 1*(x1[1]*x3[3]-x1[3]*x3[1]) + 1*(x1[1]*x3[2]-x1[2]*x3[1])) - x3[0]*(1*(x1[2]*x2[3]-x1[3]*x2[2]) - 1*(x1[1]*x2[3]-x1[3]*x2[1]) + 1*(x1[1]*x2[2]-x1[2]*x2[1]));
+
+	double p0 = (y[0]*(x1[1]*(x2[2]*x3[3]-x2[3]*x3[2]) - x1[2]*(x2[1]*x3[3]-x2[3]*x3[1]) + x1[3]*(x2[1]*x3[2]-x2[2]*x3[1])) - x1[0]*(y[1]*(x2[2]*x3[3]-x2[3]*x3[2]) - y[2]*(x2[1]*x3[3]-x2[3]*x3[1]) + y[3]*(x2[1]*x3[2]-x2[2]*x3[1])) + x2[0]*(y[1]*(x1[2]*x3[3]-x1[3]*x3[2]) - y[2]*(x1[1]*x3[3]-x1[3]*x3[1]) + y[3]*(x1[1]*x3[2]-x1[2]*x3[1])) - x3[0]*(y[1]*(x1[2]*x2[3]-x1[3]*x2[2]) - y[2]*(x1[1]*x2[3]-x1[3]*x2[1]) + y[3]*(x1[1]*x2[2]-x1[2]*x2[1])))/denom;
+	double p1 = (1*(y[1]*(x2[2]*x3[3]-x2[3]*x3[2]) - y[2]*(x2[1]*x3[3]-x2[3]*x3[1]) + y[3]*(x2[1]*x3[2]-x2[2]*x3[1])) - y[0]*(1*(x2[2]*x3[3]-x2[3]*x3[2]) - 1*(x2[1]*x3[3]-x2[3]*x3[1]) + 1*(x2[1]*x3[2]-x2[2]*x3[1])) + x2[0]*(1*(y[2]*x3[3]-y[3]*x3[2]) - 1*(y[1]*x3[3]-y[3]*x3[1]) + 1*(y[1]*x3[2]-y[2]*x3[1])) - x3[0]*(1*(y[2]*x2[3]-y[3]*x2[2]) - 1*(y[1]*x2[3]-y[3]*x2[1]) + 1*(y[1]*x2[2]-y[2]*x2[1])))/denom;
+	double p2 = (1*(x1[1]*(y[2]*x3[3]-y[3]*x3[2]) - x1[2]*(y[1]*x3[3]-y[3]*x3[1]) + x1[3]*(y[1]*x3[2]-y[2]*x3[1])) - x1[0]*(1*(y[2]*x3[3]-y[3]*x3[2]) - 1*(y[1]*x3[3]-y[3]*x3[1]) + 1*(y[1]*x3[2]-y[2]*x3[1])) + y[0]*(1*(x1[2]*x3[3]-x1[3]*x3[2]) - 1*(x1[1]*x3[3]-x1[3]*x3[1]) + 1*(x1[1]*x3[2]-x1[2]*x3[1])) - x3[0]*(1*(x1[2]*y[3]-x1[3]*y[2]) - 1*(x1[1]*y[3]-x1[3]*y[1]) + 1*(x1[1]*y[2]-x1[2]*y[1])))/denom;
+	double p3 = (1*(x1[1]*(x2[2]*y[3]-x2[3]*y[2]) - x1[2]*(x2[1]*y[3]-x2[3]*y[1]) + x1[3]*(x2[1]*y[2]-x2[2]*y[1])) - x1[0]*(1*(x2[2]*y[3]-x2[3]*y[2]) - 1*(x2[1]*y[3]-x2[3]*y[1]) + 1*(x2[1]*y[2]-x2[2]*y[1])) + x2[0]*(1*(x1[2]*y[3]-x1[3]*y[2]) - 1*(x1[1]*y[3]-x1[3]*y[1]) + 1*(x1[1]*y[2]-x1[2]*y[1])) - y[0]*(1*(x1[2]*x2[3]-x1[3]*x2[2]) - 1*(x1[1]*x2[3]-x1[3]*x2[1]) + 1*(x1[1]*x2[2]-x1[2]*x2[1])))/denom;
+
+	double xmax1 = (-2*p2+std::sqrt(4*p2*p2-12*p3*p1))/(6*p3);
+	double xmax2 = (-2*p2-std::sqrt(4*p2*p2-12*p3*p1))/(6*p3);
+
+	if((2*p2+6*p3*xmax1) < 0){ // The second derivative is negative (i.e. this is a maximum).
+		Xmax = (float)xmax1;
+		return (float)(p0 + p1*xmax1 + p2*xmax1*xmax1 + p3*xmax1*xmax1*xmax1);
+	}
+
+	Xmax = (float)xmax2;
+	return (float)(p0 + p1*xmax2 + p2*xmax2*xmax2 + p3*xmax2*xmax2*xmax2);
+}
+
