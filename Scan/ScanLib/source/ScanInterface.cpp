@@ -965,7 +965,7 @@ bool ScanInterface::Setup(int argc, char *argv[]){
 	if(!batch_mode){
 		term = new Terminal();
 		term->Initialize();
-		term->SetCommandHistory(("."+progName+".cmd").c_str());
+		term->SetCommandHistory((homeDir+"/."+progName+".cmd").c_str());
 		term->SetPrompt((progName+" $ ").c_str());
 		term->AddStatusWindow();
 		term->SetStatus("\033[0;31m[STOP]\033[0m Acquisition stopped.");
