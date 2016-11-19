@@ -73,6 +73,7 @@ int main(int argc, char *argv[]){
 			}
 			else{
 				ldfDir.PrintDelimited();
+				std::cout << "\t";
 				ldfHead.PrintDelimited();
 			}
 			std::cout << std::endl;
