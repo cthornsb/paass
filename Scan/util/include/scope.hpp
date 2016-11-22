@@ -226,8 +226,9 @@ class scopeScanner : public ScanInterface {
 	TApplication *rootapp; ///< Root application pointer.
 	TCanvas *canvas; ///< The main plotting canvas.
 	TGraph *graph; ///< The TGraph for plotting traces.
-	TGraph *cfdGraph; ///< The TGraph for plotting cfd analysis.
 	TLine *cfdLine;
+	TF1 *cfdPol3;
+	TF1 *cfdPol2;
 	TH2F *hist; ///<The histogram containing the waveform frequencies.
 	TProfile *prof; ///<The profile of the average histogram.
 

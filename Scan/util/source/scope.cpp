@@ -144,9 +144,12 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	canvas = new TCanvas("scope_canvas", "scopeScanner");
 	
 	graph = new TGraph();
-	cfdGraph = new TGraph();
 	cfdLine = new TLine();
-	cfdLine->SetLineColor(2);
+	cfdLine->SetLineColor(kRed);
+	cfdPol3 = new TF1("cfdPol3", "pol3");
+	cfdPol3->SetLineColor(kGreen+1);
+	cfdPol2 = new TF1("cfdPol2", "pol2");
+	cfdPol2->SetLineColor(kMagenta+1);
 	
 	hist = new TH2F("hist","",256,0,1,256,0,1);
 
@@ -166,8 +169,9 @@ scopeScanner::~scopeScanner(){
 	canvas->Close();
 	delete canvas;
 	delete graph;
-	delete cfdGraph;
 	delete cfdLine;
+	delete cfdPol3;
+	delete cfdPol2;
 	delete hist;
 	delete paulauskasFunc;
 }
@@ -181,14 +185,10 @@ TF1 *scopeScanner::SetupFunc() {
 
 void scopeScanner::ResetGraph(unsigned int size) {
 	delete graph;
-	delete cfdGraph;
 		
 	graph = new TGraph(size);
 	graph->SetMarkerStyle(kFullDotSmall);
 	
-	cfdGraph = new TGraph(size);
-	cfdGraph->SetLineColor(4);
-
 	if(size != x_vals.size()){
 		std::cout << msgHeader << "Changing trace length from " << x_vals.size()*ADC_TIME_STEP << " to " << size*ADC_TIME_STEP << " ns.\n";
 		x_vals.resize(size);
@@ -271,11 +271,32 @@ void scopeScanner::Plot(){
 		float highVal = (chanEvents_.front()->max_index + fitHigh_) * ADC_TIME_STEP;
 
 		if(performCfd_){
+			ChannelEvent *evt = chanEvents_.front();
+
 			// Find the zero-crossing of the cfd waveform.
-			float cfdCrossing = chanEvents_.front()->AnalyzeCFD(cfdF_, cfdD_, cfdL_);
+			float cfdCrossing = evt->AnalyzeCFD(cfdF_);
 			
 			// Draw the cfd crossing line.
 			cfdLine->DrawLine(cfdCrossing*ADC_TIME_STEP, userZoomVals[1][0], cfdCrossing*ADC_TIME_STEP, userZoomVals[1][1]);
+			
+			// Draw the 3rd order polynomial.
+			cfdPol3->SetParameter(0, evt->cfdPar[0]);
+			cfdPol3->SetParameter(1, evt->cfdPar[1]/ADC_TIME_STEP);
+			cfdPol3->SetParameter(2, evt->cfdPar[2]/std::pow(ADC_TIME_STEP, 2.0));
+			cfdPol3->SetParameter(3, evt->cfdPar[3]/std::pow(ADC_TIME_STEP, 3.0));
+			// Find the pulse maximum by fitting with a third order polynomial.
+			if(evt->adcTrace[evt->max_index-1] >= evt->adcTrace[evt->max_index+1]) // Favor the left side of the pulse.
+				cfdPol3->SetRange((evt->max_index - 2)*ADC_TIME_STEP, (evt->max_index + 1)*ADC_TIME_STEP);
+			else // Favor the right side of the pulse.
+				cfdPol3->SetRange((evt->max_index - 1)*ADC_TIME_STEP, (evt->max_index + 2)*ADC_TIME_STEP);
+			cfdPol3->Draw("SAME");
+			
+			// Draw the 2nd order polynomial.
+			cfdPol2->SetParameter(0, evt->cfdPar[4]);
+			cfdPol2->SetParameter(1, evt->cfdPar[5]/ADC_TIME_STEP);
+			cfdPol2->SetParameter(2, evt->cfdPar[6]/std::pow(ADC_TIME_STEP, 2.0));
+			cfdPol2->SetRange((evt->cfdIndex - 1)*ADC_TIME_STEP, (evt->cfdIndex + 1)*ADC_TIME_STEP);
+			cfdPol2->Draw("SAME");
 		}
 
 		if(performFit_){
