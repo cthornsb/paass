@@ -19,6 +19,7 @@
 #include "TFile.h"
 #include "TF1.h"
 #include "TLine.h"
+#include "TBox.h"
 #include "TProfile.h"
 #include "TPaveStats.h"
 
@@ -146,6 +147,9 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	graph = new TGraph();
 	cfdLine = new TLine();
 	cfdLine->SetLineColor(kRed);
+	cfdBox = new TBox();
+	cfdBox->SetFillColor(kRed);
+	cfdBox->SetFillStyle(3004);
 	cfdPol3 = new TF1("cfdPol3", "pol3");
 	cfdPol3->SetLineColor(kGreen+1);
 	cfdPol2 = new TF1("cfdPol2", "pol2");
@@ -307,6 +311,9 @@ void scopeScanner::Plot(){
 		}
 	}
 	else { //For multiple events with make a 2D histogram and plot the profile on top.
+		float cfdAvg = 0, minPhase = 9999, maxPhase = -9999;
+		int numCfdWaveforms = numAvgWaveforms_;
+
 		//Determine the maximum and minimum values of the events.
 		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
 			ChannelEvent* evt = chanEvents_.at(i);
@@ -316,7 +323,25 @@ void scopeScanner::Plot(){
 			evtMax += fabs(0.1 * evtMax);
 			if (evtMin < axisVals[1][0]) axisVals[1][0] = evtMin;
 			if (evtMax > axisVals[1][1]) axisVals[1][1] = evtMax;
+
+			if(performCfd_){
+				// Find the zero-crossing of the cfd waveform.
+				float cfdCrossing = evt->AnalyzeCFD(cfdF_);
+				if(cfdCrossing > 0){ // Handle failed CFD.
+					cfdAvg += cfdCrossing;
+					if(cfdCrossing < minPhase)
+						minPhase = cfdCrossing;
+					if(cfdCrossing > maxPhase)
+						maxPhase = cfdCrossing;
+				}
+				else{
+					numCfdWaveforms--;				
+				}
+			}
 		}
+
+		// Calculate the average phase obtained from CFD.
+		cfdAvg = cfdAvg / numCfdWaveforms;
 
 		//Set the users zoom window.
 		for (int i=0; i<2; i++) {
@@ -346,7 +371,7 @@ void scopeScanner::Plot(){
 
 		float lowVal = prof->GetBinCenter(prof->GetMaximumBin() - fitLow_);
 		float highVal = prof->GetBinCenter(prof->GetMaximumBin() + fitHigh_);
-		
+
 		if(performFit_){
 			paulauskasFunc->SetRange(lowVal, highVal);
 			paulauskasFunc->SetParameters(chanEvents_.front()->baseline, 0.5 * chanEvents_.front()->qdc, lowVal, 0.5, 0.2);
@@ -354,12 +379,31 @@ void scopeScanner::Plot(){
 			prof->Fit(paulauskasFunc,"QMER");
 		}
 
-		hist->SetStats(false);
-		hist->Draw("COLZ");		
-		prof->Draw("SAMES");
+		if(!performCfd_){
+			hist->SetStats(false);
+			hist->Draw("COLZ");		
+			prof->Draw("SAMES");
 
-		hist->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
-		hist->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
+			hist->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
+			hist->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
+		}		
+		else{
+			prof->SetStats(false);
+			prof->Draw("S");
+
+			prof->GetXaxis()->SetRangeUser(userZoomVals[0][0], userZoomVals[0][1]);
+			prof->GetYaxis()->SetRangeUser(userZoomVals[1][0], userZoomVals[1][1]);
+
+			// Draw the cfd crossing line.
+			cfdLine->DrawLine(cfdAvg*ADC_TIME_STEP, userZoomVals[1][0], cfdAvg*ADC_TIME_STEP, userZoomVals[1][1]);
+			
+			// Draw a bounding box for the minimum and maximum phase values.
+			cfdBox->SetX1(minPhase*ADC_TIME_STEP);
+			cfdBox->SetY1(userZoomVals[1][0]);
+			cfdBox->SetX2(maxPhase*ADC_TIME_STEP);
+			cfdBox->SetY2(userZoomVals[1][1]);
+			cfdBox->Draw("SAME");
+		}
 
 		canvas->Update();	
 		TPaveStats* stats = (TPaveStats*) prof->GetListOfFunctions()->FindObject("stats");

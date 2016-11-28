@@ -18,6 +18,7 @@ class TGraph;
 class TH2F;
 class TF1;
 class TLine;
+class TBox;
 class TProfile;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -227,6 +228,7 @@ class scopeScanner : public ScanInterface {
 	TCanvas *canvas; ///< The main plotting canvas.
 	TGraph *graph; ///< The TGraph for plotting traces.
 	TLine *cfdLine;
+	TBox *cfdBox;
 	TF1 *cfdPol3;
 	TF1 *cfdPol2;
 	TH2F *hist; ///<The histogram containing the waveform frequencies.
