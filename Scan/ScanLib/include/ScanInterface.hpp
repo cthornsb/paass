@@ -279,6 +279,9 @@ class ScanInterface{
 	  */
 	virtual Unpacker *GetCore();
 
+	/// Seek to a specified position in the file.
+	bool rewind(const unsigned long &offset_=0);
+
   private:
 	unsigned int maxShmSizeL; /// Max size of shared memory buffer in pixie words (4050 + 2 header words)
 	unsigned int maxShmSize; /// Max size of shared memory buffer in bytes
@@ -335,9 +338,6 @@ class ScanInterface{
 	
 	/// Print a command line argument help dialogue.
 	void help(char *name_);
-	
-	/// Seek to a specified position in the file.
-	bool rewind(const unsigned long &offset_=0);
 	
 	/// Open a new binary input file for reading.
 	bool open_input_file(const std::string &fname_);
