@@ -758,6 +758,7 @@ void ScanInterface::CmdControl(){
 			std::cout << "   file <filename> - Load an input file\n";
 			std::cout << "   rewind [offset] - Rewind to the beginning of the file\n";
 			std::cout << "   sync            - Wait for the current run to finish\n";
+			std::cout << "   tell            - If stopped, display the current file position\n";
 			CmdHelp("   ");
 		}
 		else if(cmd == "run"){ // Start acquisition.
@@ -808,6 +809,15 @@ void ScanInterface::CmdControl(){
 				waiting_for_run = true;
 			}
 			else{ std::cout << msgHeader << "Scan is not running.\n"; }
+		}
+		else if(cmd == "tell"){ // If stopped, display the current file position.
+			if(!is_running){
+				std::streampos currentPosition = input_file.tellg();
+				if(currentPosition == file_length) std::cout << msgHeader << "Currently at END of file (" << file_length << " words).\n";
+				else if(currentPosition == 0) std::cout << msgHeader << "Currently at BEG of file (0 of " << file_length << " words).\n";
+				else std::cout << msgHeader << "Current input file position is " << currentPosition/4 << " of " << file_length/4 << " words (" << (currentPosition/file_length)*100 << " %).\n";
+			}
+			else{ std::cout << msgHeader << "Cannot display file position while scan is running.\n"; }
 		}
 		else if(!ExtraCommands(cmd, arguments)){ // Unrecognized command. Send it to a derived object.
 			std::cout << msgHeader << "Unknown command '" << cmd << "'\n";
