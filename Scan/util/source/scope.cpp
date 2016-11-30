@@ -139,6 +139,7 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	fitHigh_ = 15;
 	delay_ = 2;
 	num_displayed = 0;
+	just_plotted = 0;
 	time(&last_trace);
 	
 	// Variables for root graphics
@@ -434,16 +435,11 @@ void scopeScanner::Plot(){
 		chanEvents_.pop_front();
 	}
 
+	// Update the number of waveforms currently being displayed.
+	just_plotted = numAvgWaveforms_;
+
 	// Update the canvas.
 	canvas->Update();
-
-	// Save the TGraph to a file.
-	if (saveFile_ != "") {
-		TFile f(saveFile_.c_str(), "RECREATE");
-		graph->Clone("trace")->Write();
-		f.Close();
-		saveFile_ = "";
-	}
 
 	if(plotAll) // Reset the waveform counter to zero to preserve "avg all" setting.
 		numAvgWaveforms_ = 0;
@@ -567,16 +563,16 @@ void scopeScanner::ClearEvents(){
   * \return Nothing.
   */
 void scopeScanner::CmdHelp(const std::string &prefix_/*=""*/){
-	std::cout << "   set <module> <channel>  - Set the module and channel of signal of interest (default = 0, 0).\n";
-	std::cout << "   single                  - Perform a single capture.\n";
-	std::cout << "   thresh <low> [high]     - Set the plotting window for trace maximum.\n";
-	std::cout << "   fit <low> <high>        - Turn on fitting of waveform. Set <low> to \"off\" to disable.\n";
-	std::cout << "   cfd [F=0.5] [D=1] [L=1] - Turn on cfd analysis of waveform. Set [F] to \"off\" to disable.\n";
-	std::cout << "   avg [numWaveforms]      - Set the number of waveforms to average.\n";
-	std::cout << "   save <fileName>         - Save the next trace to the specified file name..\n";
-	std::cout << "   delay [time]            - Set the delay between drawing traces (in seconds, default = 1 s).\n";
-	std::cout << "   log                     - Toggle log/linear mode on the y-axis.\n";
-	std::cout << "   clear                   - Clear all stored traces and start over.\n";
+	std::cout << "   set <module> <channel>   - Set the module and channel of signal of interest (default = 0, 0).\n";
+	std::cout << "   single                   - Perform a single capture.\n";
+	std::cout << "   thresh <low> [high]      - Set the plotting window for trace maximum.\n";
+	std::cout << "   fit <low> <high>         - Turn on fitting of waveform. Set <low> to \"off\" to disable.\n";
+	std::cout << "   cfd [F=0.5] [D=1] [L=1]  - Turn on cfd analysis of waveform. Set [F] to \"off\" to disable.\n";
+	std::cout << "   avg [numWaveforms]       - Set the number of waveforms to average.\n";
+	std::cout << "   save <fileName> [suffix] - Save the next trace to the specified file name..\n";
+	std::cout << "   delay [time]             - Set the delay between drawing traces (in seconds, default = 1 s).\n";
+	std::cout << "   log                      - Toggle log/linear mode on the y-axis.\n";
+	std::cout << "   clear                    - Clear all stored traces and start over.\n";
 }
 
 /** ArgHelp is used to allow a derived class to add a command line option
@@ -716,12 +712,34 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 		}
 	}
 	else if(cmd_ == "save") {
-		if (args_.size() == 1) {
-			saveFile_ = args_.at(0);
+		if (args_.size() >= 1) {
+			std::string saveFile = args_.at(0);
+			std::string nameSuffix = "";
+			if(args_.size() > 1)
+				nameSuffix = args_.at(1);
+
+			if(just_plotted == 1){
+				// Save the TGraph to a file.
+				TFile f(saveFile.c_str(), "UPDATE");
+				graph->Clone(("trace"+nameSuffix).c_str())->Write();
+				f.Close();
+				std::cout << msgHeader << "Wrote TGraph \"trace" << nameSuffix << "\" to " << saveFile << std::endl;
+			}
+			else if(just_plotted > 0){
+				// Save the TH2F and TProfile to a file.
+				TFile f(saveFile.c_str(), "UPDATE");
+				hist->Clone(("hist"+nameSuffix).c_str())->Write();
+				prof->Clone(("prof"+nameSuffix).c_str())->Write();
+				f.Close();
+				std::cout << msgHeader << "Wrote TH2F \"hist" << nameSuffix << "\" and TProfile \"prof" << nameSuffix << "\" to " << saveFile << std::endl;
+			}
+			else{ // Nothing has been drawn yet.
+				std::cout << msgHeader << "No waveforms currently displayed.\n";
+			}
 		}
 		else {
 			std::cout << msgHeader << "Invalid number of parameters to 'save'\n";
-			std::cout << msgHeader << " -SYNTAX- save <fileName>\n";
+			std::cout << msgHeader << " -SYNTAX- save <fileName> [suffix]\n";
 		}
 	}
 	else if(cmd_ == "delay"){

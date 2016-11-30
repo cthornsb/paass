@@ -192,6 +192,7 @@ class scopeScanner : public ScanInterface {
   private:
 	unsigned int numAvgWaveforms_;
 	unsigned int num_displayed; ///< The number of displayed traces.
+	unsigned int just_plotted; ///< The number of traces currently displayed on the screen.
 
 	size_t numEvents; /// The number of waveforms to store.
 	
@@ -217,8 +218,6 @@ class scopeScanner : public ScanInterface {
 
 	time_t last_trace; ///< The time of the last trace.
 	
-	std::string saveFile_; ///< The name of the file to save a trace.
-
 	TApplication *rootapp; ///< Root application pointer.
 	TCanvas *canvas; ///< The main plotting canvas.
 	TGraph *graph; ///< The TGraph for plotting traces.
