@@ -722,16 +722,34 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 				// Save the TGraph to a file.
 				TFile f(saveFile.c_str(), "UPDATE");
 				graph->Clone(("trace"+nameSuffix).c_str())->Write();
+				std::cout << msgHeader << "Wrote \"trace" << nameSuffix << "\" to " << saveFile << std::endl;
+				if(performFit_){
+					paulauskasFunc->Clone(("func"+nameSuffix).c_str())->Write();
+					std::cout << msgHeader << "Wrote \"func" << nameSuffix << "\" to " << saveFile << std::endl;				
+				}
+				if(performCfd_){
+					cfdLine->Clone(("cfdLine"+nameSuffix).c_str())->Write();
+					std::cout << msgHeader << "Wrote \"cfdLine" << nameSuffix << "\" to " << saveFile << std::endl;
+				}
 				f.Close();
-				std::cout << msgHeader << "Wrote TGraph \"trace" << nameSuffix << "\" to " << saveFile << std::endl;
 			}
 			else if(just_plotted > 0){
 				// Save the TH2F and TProfile to a file.
 				TFile f(saveFile.c_str(), "UPDATE");
 				hist->Clone(("hist"+nameSuffix).c_str())->Write();
 				prof->Clone(("prof"+nameSuffix).c_str())->Write();
+				std::cout << msgHeader << "Wrote \"hist" << nameSuffix << "\" and \"prof" << nameSuffix << "\" to " << saveFile << std::endl;
+				if(performFit_){
+					paulauskasFunc->Clone(("func"+nameSuffix).c_str())->Write();
+					std::cout << msgHeader << "Wrote \"func" << nameSuffix << "\" to " << saveFile << std::endl;				
+				}
+				if(performCfd_){
+					cfdLine->Clone(("cfdLine"+nameSuffix).c_str())->Write();
+					cfdBox->Clone(("cfdBox"+nameSuffix).c_str())->Write();
+					std::cout << msgHeader << "Wrote \"cfdLine" << nameSuffix << "\" and \"" << nameSuffix << "\" to " << saveFile << std::endl;
+				}
 				f.Close();
-				std::cout << msgHeader << "Wrote TH2F \"hist" << nameSuffix << "\" and TProfile \"prof" << nameSuffix << "\" to " << saveFile << std::endl;
+				
 			}
 			else{ // Nothing has been drawn yet.
 				std::cout << msgHeader << "No waveforms currently displayed.\n";
