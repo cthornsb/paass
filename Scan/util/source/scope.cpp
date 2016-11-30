@@ -31,6 +31,8 @@
 #define ADC_TIME_STEP 4 // ns
 #define SLEEP_WAIT 1E4 // When not in shared memory mode, length of time to wait after gSystem->ProcessEvents is called (in us).
 
+const double stdDevCoeff = 2.0 * std::sqrt(2.0 * std::log(2.0));
+
 /**The Paulauskas function is described in NIM A 737 (22), with a slight 
  * adaptation. We use a step function such that f(x < phase) = baseline.
  * In addition, we also we formulate gamma such that the gamma in the paper is
@@ -319,11 +321,12 @@ void scopeScanner::Plot(){
 		}
 	}
 	else { //For multiple events with make a 2D histogram and plot the profile on top.
-		float cfdAvg = 0, minPhase = 9999, maxPhase = -9999;
-		int numCfdWaveforms = numAvgWaveforms_;
+		double cfdAvg = 0.0;
+		double cfdStdDev = 0.0;
+		std::vector<float> cfdPhases;
 
 		//Determine the maximum and minimum values of the events.
-		for (unsigned int i = 0; i < numAvgWaveforms_; i++) {
+		for (size_t i = 0; i < numAvgWaveforms_; i++) {
 			ChannelEvent* evt = chanEvents_.at(i);
 			float evtMin = *std::min_element(evt->adcTrace, evt->adcTrace+evt->traceLength);
 			float evtMax = *std::max_element(evt->adcTrace, evt->adcTrace+evt->traceLength);
@@ -336,20 +339,24 @@ void scopeScanner::Plot(){
 				// Find the zero-crossing of the cfd waveform.
 				float cfdCrossing = evt->AnalyzeCFD(cfdF_);
 				if(cfdCrossing > 0){ // Handle failed CFD.
-					cfdAvg += cfdCrossing;
-					if(cfdCrossing < minPhase)
-						minPhase = cfdCrossing;
-					if(cfdCrossing > maxPhase)
-						maxPhase = cfdCrossing;
-				}
-				else{
-					numCfdWaveforms--;				
+					cfdPhases.push_back(cfdCrossing);
+					cfdAvg += cfdCrossing;				
 				}
 			}
 		}
 
-		// Calculate the average phase obtained from CFD.
-		cfdAvg = cfdAvg / numCfdWaveforms;
+		if(performCfd_){
+			// Calculate the average phase obtained from CFD.
+			cfdAvg = cfdAvg / cfdPhases.size();
+
+			// Calculate the standard deviation of the phase distribution.
+			for(std::vector<float>::iterator iter = cfdPhases.begin(); iter != cfdPhases.end(); ++iter){
+				cfdStdDev += std::pow(*iter-cfdAvg, 2.0);
+			}
+
+			cfdStdDev = std::sqrt(cfdStdDev / cfdPhases.size());
+			cfdStdDev *= stdDevCoeff; // Now FWHM!!!
+		}
 
 		//Set the users zoom window.
 		for (int i=0; i<2; i++) {
@@ -405,10 +412,13 @@ void scopeScanner::Plot(){
 			// Draw the cfd crossing line.
 			cfdLine->DrawLine(cfdAvg*ADC_TIME_STEP, userZoomVals[1][0], cfdAvg*ADC_TIME_STEP, userZoomVals[1][1]);
 			
-			// Draw a bounding box for the minimum and maximum phase values.
-			cfdBox->SetX1(minPhase*ADC_TIME_STEP);
+			if(this->IsVerbose())
+				std::cout << " CFD PHASE ANALYSIS: meanPhase = " << cfdAvg*ADC_TIME_STEP << " ns, stdDev = " << cfdStdDev*ADC_TIME_STEP << " ns FWHM.\n";
+
+			// Draw a bounding box for the FWHM of the phase.
+			cfdBox->SetX1((cfdAvg - cfdStdDev/2)*ADC_TIME_STEP);
 			cfdBox->SetY1(userZoomVals[1][0]);
-			cfdBox->SetX2(maxPhase*ADC_TIME_STEP);
+			cfdBox->SetX2((cfdAvg + cfdStdDev/2)*ADC_TIME_STEP);
 			cfdBox->SetY2(userZoomVals[1][1]);
 			cfdBox->Draw("SAME");
 		}
