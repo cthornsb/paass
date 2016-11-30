@@ -127,6 +127,7 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	running = true;
 	performFit_ = false;
 	performCfd_ = false;
+	doRestart_ = false;
 	numEvents = 20;
 	numAvgWaveforms_ = 1;
 	cfdF_ = 0.5;
@@ -210,8 +211,15 @@ void scopeScanner::ResetGraph(unsigned int size) {
 }
 
 void scopeScanner::Plot(){
-	if(chanEvents_.size() < numAvgWaveforms_)
+	if(chanEvents_.empty() || chanEvents_.size() < numAvgWaveforms_)
 		return;
+
+	bool plotAll = false;
+	if(numAvgWaveforms_ == 0){ // Plot whatever we have.
+		numAvgWaveforms_ = chanEvents_.size();
+		std::cout << msgHeader << "Plotting " << numAvgWaveforms_ << " waveforms.\n";
+		plotAll = true;
+	}
 
 	///The limits of the vertical axis
 	static float axisVals[2][2]; //The max and min values of the graph, first index is the axis, second is the min / max
@@ -430,6 +438,9 @@ void scopeScanner::Plot(){
 		saveFile_ = "";
 	}
 
+	if(plotAll) // Reset the waveform counter to zero to preserve "avg all" setting.
+		numAvgWaveforms_ = 0;
+
 	num_displayed++;
 }
 
@@ -453,13 +464,18 @@ bool scopeScanner::Initialize(std::string prefix_){
   */
 void scopeScanner::Notify(const std::string &code_/*=""*/){
 	if(code_ == "START_SCAN"){ 
-		ClearEvents();
 		acqRun_ = true; 
 	}
-	else if(code_ == "STOP_SCAN"){ acqRun_ = false; }
-	else if(code_ == "SCAN_COMPLETE"){ std::cout << msgHeader << "Scan complete.\n"; }
+	else if(code_ == "STOP_SCAN"){ 
+		acqRun_ = false; 
+	}
+	else if(code_ == "SCAN_COMPLETE"){ 
+		std::cout << msgHeader << "Scan complete.\n"; 
+		ProcessEvents(); // Process whatever is left in the deque.
+	}
 	else if(code_ == "LOAD_FILE"){ std::cout << msgHeader << "File loaded.\n"; }
 	else if(code_ == "REWIND_FILE"){  }
+	else if(code_ == "RESTART"){ chanEvents_.clear(); }
 	else{ std::cout << msgHeader << "Unknown notification code '" << code_ << "'!\n"; }
 }
 
@@ -492,7 +508,7 @@ bool scopeScanner::AddEvent(XiaData *event_){
 	chanEvents_.push_back(channel_event);
 
 	// Handle the individual XiaData.
-	if(chanEvents_.size() >= numAvgWaveforms_)
+	if(chanEvents_.size() >= numAvgWaveforms_ && numAvgWaveforms_ > 0)
 		return true;
 		
 	return false;
@@ -545,13 +561,11 @@ void scopeScanner::ClearEvents(){
   */
 void scopeScanner::CmdHelp(const std::string &prefix_/*=""*/){
 	std::cout << "   set <module> <channel>  - Set the module and channel of signal of interest (default = 0, 0).\n";
-	std::cout << "   stop                    - Stop the acquistion.\n";
-	std::cout << "   run                     - Run the acquistion.\n";
 	std::cout << "   single                  - Perform a single capture.\n";
 	std::cout << "   thresh <low> [high]     - Set the plotting window for trace maximum.\n";
 	std::cout << "   fit <low> <high>        - Turn on fitting of waveform. Set <low> to \"off\" to disable.\n";
 	std::cout << "   cfd [F=0.5] [D=1] [L=1] - Turn on cfd analysis of waveform. Set [F] to \"off\" to disable.\n";
-	std::cout << "   avg <numWaveforms>      - Set the number of waveforms to average.\n";
+	std::cout << "   avg [numWaveforms]      - Set the number of waveforms to average.\n";
 	std::cout << "   save <fileName>         - Save the next trace to the specified file name..\n";
 	std::cout << "   delay [time]            - Set the delay between drawing traces (in seconds, default = 1 s).\n";
 	std::cout << "   log                     - Toggle log/linear mode on the y-axis.\n";
@@ -689,9 +703,9 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 		if (args_.size() == 1) {
 			numAvgWaveforms_ = atoi(args_.at(0).c_str());
 		}
-		else {
-			std::cout << msgHeader << "Invalid number of parameters to 'avg'\n";
-			std::cout << msgHeader << " -SYNTAX- avg <numWavefroms>\n";
+		else{
+			numAvgWaveforms_ = 0;
+			restart();
 		}
 	}
 	else if(cmd_ == "save") {

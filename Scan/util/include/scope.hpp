@@ -93,12 +93,6 @@ class scopeScanner : public ScanInterface {
 	/// Set the maximum number of events to store.
 	void SetNumEvents(size_t num_){ numEvents = num_; }
 
-	/// Stop the run.
-	void StopACQ(){ running = false; }
-	
-	/// Star the run.
-	void StartACQ(){ running = true; }
-
 	/** ExtraCommands is used to send command strings to classes derived
 	  * from ScanInterface. If ScanInterface receives an unrecognized
 	  * command from the user, it will pass it on to the derived class.
@@ -114,7 +108,7 @@ class scopeScanner : public ScanInterface {
 	  * as active by ::Setup(). This should be overloaded in the derived class.
 	  * \return Nothing.
 	  */
-    virtual void ExtraArguments();
+	virtual void ExtraArguments();
 	
 	/** CmdHelp is used to allow a derived class to print a help statement about
 	  * its own commands. This method is called whenever the user enters 'help'
@@ -198,7 +192,7 @@ class scopeScanner : public ScanInterface {
   private:
 	unsigned int numAvgWaveforms_;
 	unsigned int num_displayed; ///< The number of displayed traces.
-	
+
 	size_t numEvents; /// The number of waveforms to store.
 	
 	float cfdF_;
@@ -216,6 +210,7 @@ class scopeScanner : public ScanInterface {
 	bool running;
 	bool performFit_;
 	bool performCfd_;
+	bool doRestart_;
   
 	std::vector<int> x_vals;
 	std::deque<ChannelEvent*> chanEvents_; ///<The buffer of waveforms to be plotted.
