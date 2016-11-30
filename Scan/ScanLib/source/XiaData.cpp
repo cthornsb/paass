@@ -358,20 +358,21 @@ float ChannelEvent::ComputeBaseline(){
 	if(baseline > 0){ return baseline; }
 
 	// Find the baseline.
-	baseline = 0.0;
+	double tempbaseline = 0.0;
+	double tempstddev = 0.0;
 	size_t sample_size = (15 <= traceLength ? 15:traceLength);
 	for(size_t i = 0; i < sample_size; i++){
-		baseline += adcTrace[i];
+		tempbaseline += adcTrace[i];
+		tempstddev += std::pow(adcTrace[i], 2.0);
 	}
-	baseline = float(baseline)/sample_size;
+	tempbaseline = tempbaseline/sample_size;
 	
-	// Calculate the standard deviation.
-	stddev = 0.0;
-	for(size_t i = 0; i < sample_size; i++){
-		stddev += (adcTrace[i] - baseline)*(adcTrace[i] - baseline);
-	}
-	stddev = std::sqrt((1.0/sample_size) * stddev);
-	
+	// Calculate the standard deviation of the baseline.
+	tempstddev = std::sqrt((tempstddev/sample_size) - tempbaseline*tempbaseline);
+
+	baseline = float(tempbaseline);
+	stddev = float(tempstddev);	
+
 	// Find the maximum value and the maximum bin.
 	maximum = -9999.0;
 	for(size_t i = 0; i < traceLength; i++){

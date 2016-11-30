@@ -323,7 +323,7 @@ void scopeScanner::Plot(){
 	else { //For multiple events with make a 2D histogram and plot the profile on top.
 		double cfdAvg = 0.0;
 		double cfdStdDev = 0.0;
-		std::vector<float> cfdPhases;
+		int numCfdWaveforms = numAvgWaveforms_;
 
 		//Determine the maximum and minimum values of the events.
 		for (size_t i = 0; i < numAvgWaveforms_; i++) {
@@ -339,22 +339,19 @@ void scopeScanner::Plot(){
 				// Find the zero-crossing of the cfd waveform.
 				float cfdCrossing = evt->AnalyzeCFD(cfdF_);
 				if(cfdCrossing > 0){ // Handle failed CFD.
-					cfdPhases.push_back(cfdCrossing);
-					cfdAvg += cfdCrossing;				
+					cfdAvg += cfdCrossing;
+					cfdStdDev += cfdCrossing * cfdCrossing;			
 				}
+				else{ numCfdWaveforms--; }
 			}
 		}
 
 		if(performCfd_){
 			// Calculate the average phase obtained from CFD.
-			cfdAvg = cfdAvg / cfdPhases.size();
+			cfdAvg = cfdAvg / numCfdWaveforms;
 
 			// Calculate the standard deviation of the phase distribution.
-			for(std::vector<float>::iterator iter = cfdPhases.begin(); iter != cfdPhases.end(); ++iter){
-				cfdStdDev += std::pow(*iter-cfdAvg, 2.0);
-			}
-
-			cfdStdDev = std::sqrt(cfdStdDev / cfdPhases.size());
+			cfdStdDev = std::sqrt(cfdStdDev / numCfdWaveforms - cfdAvg*cfdAvg);
 			cfdStdDev *= stdDevCoeff; // Now FWHM!!!
 		}
 
