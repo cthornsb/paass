@@ -106,6 +106,11 @@ class Unpacker{
 	  * \return Nothing.
 	  */
 	void Run(){ running = true; }
+
+	/** Clear event list and raw event.
+	  * \return Nothing.
+	  */
+	void Clear();
 	
   protected:
 	double eventWidth; /// The width of the raw event in pixie clock ticks (8 ns).

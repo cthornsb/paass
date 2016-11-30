@@ -282,6 +282,9 @@ class ScanInterface{
 	/// Seek to a specified position in the file.
 	bool rewind(const unsigned long &offset_=0);
 
+	/// Restart the scan from the beginning of the file.
+	bool restart(const unsigned long &offset_=0);
+
   private:
 	unsigned int maxShmSizeL; /// Max size of shared memory buffer in pixie words (4050 + 2 header words)
 	unsigned int maxShmSize; /// Max size of shared memory buffer in bytes

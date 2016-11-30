@@ -200,6 +200,26 @@ bool ScanInterface::rewind(const unsigned long &offset_/*=0*/){
 	return true;
 }
 
+/** Seek to a specified position in the file.
+  * \param[in]  offset_ The position, with respect to the start of the file, to seek to.
+  * \return True upon success and false otherwise.
+  */
+bool ScanInterface::restart(const unsigned long &offset_/*=0*/){
+	if(is_running){
+		stop_scan();
+		rewind(offset_);
+		core->Clear();
+		start_scan();
+	}
+	else
+		rewind(offset_);
+
+	// Notify that the user has restarted the scan.
+	Notify("RESTART");
+
+	return true;
+}
+
 /** Open a new binary input file for reading.
   * \param[in]  fname_ Input filename to open for reading.
   * \return True upon successfully opening the file and false otherwise.
@@ -748,17 +768,18 @@ void ScanInterface::CmdControl(){
 		}
 		else if(cmd == "help" || cmd == "h"){
 			std::cout << "  Help:\n";
-			std::cout << "   debug           - Toggle debug mode flag (default=false)\n";
-			std::cout << "   quiet           - Toggle quiet mode flag (default=false)\n";
-			std::cout << "   quit            - Close the program\n";
-			std::cout << "   help (h)        - Display this dialogue\n";
-			std::cout << "   version (v)     - Display Poll2 version information\n";
-			std::cout << "   run             - Start acquisition\n";
-			std::cout << "   stop            - Stop acquisition\n";
-			std::cout << "   file <filename> - Load an input file\n";
-			std::cout << "   rewind [offset] - Rewind to the beginning of the file\n";
-			std::cout << "   sync            - Wait for the current run to finish\n";
-			std::cout << "   tell            - If stopped, display the current file position\n";
+			std::cout << "   debug            - Toggle debug mode flag (default=false)\n";
+			std::cout << "   quiet            - Toggle quiet mode flag (default=false)\n";
+			std::cout << "   quit             - Close the program\n";
+			std::cout << "   help (h)         - Display this dialogue\n";
+			std::cout << "   version (v)      - Display Poll2 version information\n";
+			std::cout << "   run              - Start acquisition\n";
+			std::cout << "   stop             - Stop acquisition\n";
+			std::cout << "   file <filename>  - Load an input file\n";
+			std::cout << "   rewind [offset]  - Rewind to the beginning of the file\n";
+			std::cout << "   sync             - Wait for the current run to finish\n";
+			std::cout << "   tell             - If stopped, display the current file position\n";
+			std::cout << "   restart [offset] - Stop the scan and restart from the beginning of the file\n";
 			CmdHelp("   ");
 		}
 		else if(cmd == "run"){ // Start acquisition.
@@ -818,6 +839,11 @@ void ScanInterface::CmdControl(){
 				else std::cout << msgHeader << "Current input file position is " << currentPosition/4 << " of " << file_length/4 << " words (" << (currentPosition/file_length)*100 << " %).\n";
 			}
 			else{ std::cout << msgHeader << "Cannot display file position while scan is running.\n"; }
+		}
+		else if(cmd == "restart"){ // Rewind the file to the start position
+			if(p_args > 0){ restart(strtoul(arguments.at(0).c_str(), NULL, 0)); }
+			else{ restart(); }
+			
 		}
 		else if(!ExtraCommands(cmd, arguments)){ // Unrecognized command. Send it to a derived object.
 			std::cout << msgHeader << "Unknown command '" << cmd << "'\n";

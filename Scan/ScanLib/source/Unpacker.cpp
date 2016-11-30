@@ -546,3 +546,11 @@ void Unpacker::Write(){
 		count_output.close();
 	}
 }
+
+/** Clear event list and raw event.
+  * \return Nothing.
+  */
+void Unpacker::Clear(){
+	ClearRawEvent();
+	ClearEventList();
+}
