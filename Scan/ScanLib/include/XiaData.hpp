@@ -150,6 +150,7 @@ public:
     float stddev; /// Standard deviation of the baseline.
     float maximum; /// The baseline corrected maximum value of the trace.
     float qdc; /// The calculated (baseline corrected) qdc.
+    float qdc2; /// An additional qdc value.
     
 	unsigned short max_index; /// The index of the maximum trace bin (in ADC clock ticks).
     unsigned short cfdIndex; /// The index in the trace just above the CFD threshold.

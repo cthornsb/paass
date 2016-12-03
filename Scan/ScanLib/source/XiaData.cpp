@@ -350,7 +350,6 @@ ChannelEvent::ChannelEvent(XiaData *event_) : XiaData(event_) {
 }
 
 ChannelEvent::~ChannelEvent(){
-	if(cfdvals) delete[] cfdvals;
 }
 
 float ChannelEvent::ComputeBaseline(){
@@ -465,15 +464,11 @@ void ChannelEvent::Clear(){
 	baseline = -9999;
 	stddev = -9999;
 	qdc = -9999;
+	qdc2 = -9999;
 	max_index = 0;
 
 	valid_chan = false;
 	ignore = false;
-	
-	cfdvals = NULL;
-	
-	if(cfdvals) 
-		delete[] cfdvals;
 }
 
 /** Responsible for decoding ChannelEvents from a binary input file.
@@ -483,13 +478,12 @@ void ChannelEvent::Clear(){
   * \return True if the event was successfully read, or false otherwise.
   */
 bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
+	unsigned short headLength;
+
 	chanNum  =  (buf[bufferIndex] & 0x0000000F);
 	modNum   =  (buf[bufferIndex] & 0x000000F0) >> 4;
 	crateNum =  (buf[bufferIndex] & 0x00000F00) >> 8;
-	/*flags[0] = ((buf[bufferIndex] & 0x00001000) != 0);
-	flags[1] = ((buf[bufferIndex] & 0x00002000) != 0);
-	flags[2] = ((buf[bufferIndex] & 0x00004000) != 0);	
-	flags[3] = ((buf[bufferIndex] & 0x00008000) != 0);*/
+	headLength = (buf[bufferIndex] & 0x0000F000) >> 12;
 	traceLength = (buf[bufferIndex] & 0xFFFF0000) >> 16;
 
 	// The slot number shouldn't be needed, but just for completeness.
@@ -503,15 +497,17 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
 
 	memcpy((char *)&hiresTime, (char *)&buf[bufferIndex + 3], 8);
-	memcpy((char *)&phase, (char *)&buf[bufferIndex + 5], 4);
-	memcpy((char *)&baseline, (char *)&buf[bufferIndex + 6], 4);
-	memcpy((char *)&stddev, (char *)&buf[bufferIndex + 7], 4);
-	memcpy((char *)&qdc, (char *)&buf[bufferIndex + 8], 4);
-	
-	maximum   = (buf[bufferIndex + 9] & 0x0000FFFF) - baseline;
-	max_index = (buf[bufferIndex + 9] & 0xFFFF0000) >> 16;
-
-	bufferIndex += 10;
+	maximum   = (buf[bufferIndex + 5] & 0x0000FFFF);
+	max_index = (buf[bufferIndex + 5] & 0xFFFF0000) >> 16;
+	memcpy((char *)&phase, (char *)&buf[bufferIndex + 6], 4);
+	memcpy((char *)&baseline, (char *)&buf[bufferIndex + 7], 4);
+	memcpy((char *)&stddev, (char *)&buf[bufferIndex + 8], 4);
+	memcpy((char *)&qdc, (char *)&buf[bufferIndex + 9], 4);
+	if(headLength == 10) bufferIndex += 10;
+	else{
+		memcpy((char *)&qdc2, (char *)&buf[bufferIndex + 10], 4);
+		bufferIndex += 11;
+	}
 
 	// Read the ADC trace, if enabled.
 	if(traceLength != 0){ // Write the trace.
@@ -538,22 +534,21 @@ size_t ChannelEvent::getEventLength(){
 int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 	if((!file_ && !array_) || (file_ && !file_->good())) return -1;
 
-	const bool flags[4] = {false, false, false, false};
 	const unsigned short tlength = 0x0;
 	
 	unsigned short chanIdentifier = 0xFFFF;
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
+	
+	unsigned short headLength = 10;
+
+	// Add a word to the header length if qdc2 is used.
+	if(qdc2 > 0) headLength += 1;
 
 	// Build up the channel identifier.
 	chanIdentifier &= ~(0x000F & (chanNum));       // Pixie channel number
 	chanIdentifier &= ~(0x00F0 & (modNum << 4));   // Pixie module number (NOT the slot number)
 	chanIdentifier &= ~(0x0F00 & (crateNum << 8)); // Crate number
-	
-	// Activate channel flags.
-	if(flags[0]) chanIdentifier &= ~0x1;
-	if(flags[1]) chanIdentifier &= ~0x2;
-	if(flags[2]) chanIdentifier &= ~0x4;
-	if(flags[3]) chanIdentifier &= ~0x8;
+	chanIdentifier &= ~(0xF000 & (headLength << 12));
 	chanIdentifier = ~chanIdentifier;
 
 	// Build up the high event time and CFD time.
@@ -572,12 +567,14 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 		file_->write((char *)&eventTimeLo, 4);
 		file_->write((char *)&eventTimeHiWord, 4);
 		file_->write((char *)&hiresTime, 8);
+		file_->write((char *)&maxADCword, 2);
+		file_->write((char *)&max_index, 2);
 		file_->write((char *)&phase, 4);
 		file_->write((char *)&baseline, 4);
 		file_->write((char *)&stddev, 4);
 		file_->write((char *)&qdc, 4);
-		file_->write((char *)&maxADCword, 2);
-		file_->write((char *)&max_index, 2);
+		if(qdc2 > 0)
+			file_->write((char *)&qdc2, 4);
 	}
 	
 	if(array_){
@@ -588,15 +585,17 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 		memcpy(&array_[4], (char *)&eventTimeLo, 4);
 		memcpy(&array_[8], (char *)&eventTimeHiWord, 4);
 		memcpy(&array_[12], (char *)&hiresTime, 8);
+		memcpy(&array_[36], (char *)&maxADCword, 2);
+		memcpy(&array_[38], (char *)&max_index, 2);
 		memcpy(&array_[20], (char *)&phase, 4);
 		memcpy(&array_[24], (char *)&baseline, 4);
 		memcpy(&array_[28], (char *)&stddev, 4);
 		memcpy(&array_[32], (char *)&qdc, 4);
-		memcpy(&array_[36], (char *)&maxADCword, 2);
-		memcpy(&array_[38], (char *)&max_index, 2);
+		if(qdc2 > 0)
+			memcpy(&array_[36], (char *)&qdc2, 4);
 	}	
 
-	int numBytes = 40;
+	int numBytes = headLength * 4;
 
 	// Write the ADC trace, if enabled.
 	/*if(traceLength != 0){ // Write the trace.
