@@ -153,6 +153,7 @@ public:
     float qdc2; /// An additional qdc value.
     
 	unsigned short max_index; /// The index of the maximum trace bin (in ADC clock ticks).
+	unsigned short max_ADC; /// The uncorrected maximum ADC value of the trace.
     unsigned short cfdIndex; /// The index in the trace just above the CFD threshold.
     
     float cfdPar[7]; /// Array of floats for storing cfd polynomial fits.
