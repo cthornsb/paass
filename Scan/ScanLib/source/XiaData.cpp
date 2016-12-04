@@ -390,11 +390,19 @@ float ChannelEvent::ComputeBaseline(){
 	return baseline;
 }
 
-float ChannelEvent::IntegratePulse(const size_t &start_/*=0*/, const size_t &stop_/*=0*/){
+float ChannelEvent::IntegratePulse(const size_t &start_/*=0*/, const size_t &stop_/*=0*/, bool calcQdc2/*=false*/){
 	if(traceLength == 0 || baseline < 0.0){ return -9999; }
 	
 	size_t stop = (stop_ == 0?traceLength:stop_);
 	
+	if(calcQdc2){
+		qdc2 = 0.0;
+		for(size_t i = start_+1; i < stop; i++){ // Integrate using trapezoidal rule.
+			qdc2 += 0.5*(adcTrace[i-1] + adcTrace[i]) - baseline;
+		}
+		return qdc2;
+	}
+
 	qdc = 0.0;
 	for(size_t i = start_+1; i < stop; i++){ // Integrate using trapezoidal rule.
 		qdc += 0.5*(adcTrace[i-1] + adcTrace[i]) - baseline;
@@ -520,6 +528,8 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 
 /// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
 size_t ChannelEvent::getEventLength(){
+	if(qdc2 > 0)
+		return 11;
 	return 10;
 }
 

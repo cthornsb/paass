@@ -172,7 +172,7 @@ public:
     float ComputeBaseline();
     
     /// Integrate the baseline corrected trace in the range [start_, stop_] and return the result.
-    float IntegratePulse(const size_t &start_=0, const size_t &stop_=0);
+    float IntegratePulse(const size_t &start_=0, const size_t &stop_=0, bool calcQdc2=false);
     
     /// Perform CFD analysis on the waveform.
     float AnalyzeCFD(const float &F_=0.5, const size_t &D_=1, const size_t &L_=1);
