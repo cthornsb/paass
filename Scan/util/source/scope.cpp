@@ -129,7 +129,9 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	running = true;
 	performFit_ = false;
 	performCfd_ = false;
-	doRestart_ = false;
+	tdiffMode_ = false;
+	currTraceTime_ = 0;
+	prevTraceTime_ = 0;
 	numEvents = 20;
 	numAvgWaveforms_ = 1;
 	cfdF_ = 0.5;
@@ -312,6 +314,12 @@ void scopeScanner::Plot(){
 			cfdPol2->SetParameter(2, evt->cfdPar[6]/std::pow(ADC_TIME_STEP, 2.0));
 			cfdPol2->SetRange((evt->cfdIndex - 1)*ADC_TIME_STEP, (evt->cfdIndex + 1)*ADC_TIME_STEP);
 			cfdPol2->Draw("SAME");
+
+			if(tdiffMode_){
+				currTraceTime_ = evt->time*8 + cfdCrossing*4;
+				std::cout << " tdiff = " << currTraceTime_-prevTraceTime_ << " ns.\n";
+				prevTraceTime_ = currTraceTime_;
+			}
 		}
 
 		if(performFit_){
@@ -710,6 +718,11 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 			numAvgWaveforms_ = 0;
 			restart();
 		}
+	}
+	else if (cmd_ == "tdiff") {
+		tdiffMode_ = !tdiffMode_;
+		if(tdiffMode_) std::cout << msgHeader << "Enabling time difference mode.\n";
+		else std::cout << msgHeader << "Disabling time difference mode.\n";
 	}
 	else if(cmd_ == "save") {
 		if (args_.size() >= 1) {

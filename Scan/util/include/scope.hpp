@@ -211,8 +211,11 @@ class scopeScanner : public ScanInterface {
 	bool running;
 	bool performFit_;
 	bool performCfd_;
-	bool doRestart_;
+	bool tdiffMode_;
   
+	double currTraceTime_;
+	double prevTraceTime_;
+
 	std::vector<int> x_vals;
 	std::deque<ChannelEvent*> chanEvents_; ///<The buffer of waveforms to be plotted.
 
