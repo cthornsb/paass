@@ -768,18 +768,19 @@ void ScanInterface::CmdControl(){
 		}
 		else if(cmd == "help" || cmd == "h"){
 			std::cout << "  Help:\n";
-			std::cout << "   debug            - Toggle debug mode flag (default=false)\n";
-			std::cout << "   quiet            - Toggle quiet mode flag (default=false)\n";
-			std::cout << "   quit             - Close the program\n";
-			std::cout << "   help (h)         - Display this dialogue\n";
-			std::cout << "   version (v)      - Display Poll2 version information\n";
-			std::cout << "   run              - Start acquisition\n";
-			std::cout << "   stop             - Stop acquisition\n";
-			std::cout << "   file <filename>  - Load an input file\n";
-			std::cout << "   rewind [offset]  - Rewind to the beginning of the file\n";
-			std::cout << "   sync             - Wait for the current run to finish\n";
-			std::cout << "   tell             - If stopped, display the current file position\n";
-			std::cout << "   restart [offset] - Stop the scan and restart from the beginning of the file\n";
+			std::cout << "   debug               - Toggle debug mode flag (default=false)\n";
+			std::cout << "   quiet               - Toggle quiet mode flag (default=false)\n";
+			std::cout << "   quit                - Close the program\n";
+			std::cout << "   help (h)            - Display this dialogue\n";
+			std::cout << "   version (v)         - Display Poll2 version information\n";
+			std::cout << "   run                 - Start acquisition\n";
+			std::cout << "   stop                - Stop acquisition\n";
+			std::cout << "   file <filename>     - Load an input file\n";
+			std::cout << "   rewind [offset]     - Rewind to the beginning of the file\n";
+			std::cout << "   sync                - Wait for the current run to finish\n";
+			std::cout << "   tell                - If stopped, display the current file position\n";
+			std::cout << "   restart [offset]    - Stop the scan and restart from the beginning of the file\n";
+			std::cout << "   event-width <width> - Set the width of raw events (in ns, default=500)\n";
 			CmdHelp("   ");
 		}
 		else if(cmd == "run"){ // Start acquisition.
@@ -843,7 +844,17 @@ void ScanInterface::CmdControl(){
 		else if(cmd == "restart"){ // Rewind the file to the start position
 			if(p_args > 0){ restart(strtoul(arguments.at(0).c_str(), NULL, 0)); }
 			else{ restart(); }
-			
+		}
+		else if(cmd == "event-width"){ // Set the unpacker raw event width (ns).
+			if(p_args > 0){
+				double eventWidth = strtod(arguments.at(0).c_str(), 0); // In ns.
+				if(eventWidth <= 0.0) std::cout << msgHeader << "Illegal raw event width (" << eventWidth << " ns)!\n";				
+				else{
+					core->SetEventWidth(eventWidth/8.0); // In clock ticks.
+					std::cout << msgHeader << "Set raw event width to " << eventWidth << " ns (" << eventWidth/8.0 << " system clock ticks).\n";
+				}
+			}
+			else std::cout << msgHeader << "Current raw event width is " << core->GetEventWidth()*8 << " ns (" << core->GetEventWidth() << " system clock ticks).\n";
 		}
 		else if(!ExtraCommands(cmd, arguments)){ // Unrecognized command. Send it to a derived object.
 			std::cout << msgHeader << "Unknown command '" << cmd << "'\n";
