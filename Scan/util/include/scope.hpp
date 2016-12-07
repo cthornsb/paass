@@ -33,6 +33,11 @@ class scopeUnpacker : public Unpacker {
 	/// Destructor.
 	~scopeUnpacker(){  }
 
+	/** Return a pointer to a new XiaData channel event.
+	  * \return A pointer to a new XiaData.
+	  */
+	XiaData *GetNewEvent();
+
 	int SetMod(const unsigned int &mod){ return(mod >= 0 ? (mod_ = mod) : (mod_ = 0)); }
 	
 	int SetChan(const unsigned int &chan){ return(chan >= 0 ? (chan_ = chan) : (chan_ = 0)); }

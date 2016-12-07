@@ -71,6 +71,13 @@ scopeUnpacker::scopeUnpacker(const unsigned int &mod/*=0*/, const unsigned int &
 	threshHigh_ = -1;	
 }
 
+/** Return a pointer to a new XiaData channel event.
+  * \return A pointer to a new XiaData.
+  */
+XiaData *scopeUnpacker::GetNewEvent(){ 
+	return (XiaData*)(new ChannelEvent()); 
+}
+
 /** Process all events in the event list.
   * \param[in]  addr_ Pointer to a location in memory. 
   * \return Nothing.
