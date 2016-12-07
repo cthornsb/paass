@@ -276,7 +276,7 @@ int XiaData::writeEventRevF(std::ofstream *file_, char *array_){
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
 	unsigned int eventEnergyWord = 0xFFFFFFFF;
 
-	unsigned int eventLength = (unsigned int)getEventLength();
+	unsigned int eventLength = (unsigned int)getEventLengthRevF();
 	unsigned int headLength = eventLength - (unsigned int)traceLength/2;
 	
 	// Build up the channel identifier.
@@ -527,7 +527,7 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
 
 	memcpy((char *)&hiresTime, (char *)&buf[bufferIndex + 4], 8);
-	maximum   = (buf[bufferIndex + 6] & 0x0000FFFF);
+	max_ADC   = (buf[bufferIndex + 6] & 0x0000FFFF);
 	max_index = (buf[bufferIndex + 6] & 0xFFFF0000) >> 16;
 	memcpy((char *)&phase, (char *)&buf[bufferIndex + 7], 4);
 	memcpy((char *)&baseline, (char *)&buf[bufferIndex + 8], 4);
@@ -540,19 +540,12 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 	bufferIndex += headLength;
 
 	// Read the ADC trace, if enabled.
-	if(traceLength != 0){ // Write the trace.
+	if(traceLength != 0){ // Read the trace.
 		copyTrace((char *)&buf[bufferIndex], traceLength);
 		bufferIndex += (traceLength / 2);
 	}
 
 	return true;
-}
-
-/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
-size_t ChannelEvent::getEventLength(){
-	if(qdc2 > 0)
-		return 13;
-	return 12;
 }
 
 /** Write a ChannelEvent to a binary output file. Output data may
@@ -561,12 +554,13 @@ size_t ChannelEvent::getEventLength(){
   * 
   * \param[in] file_ Pointer to an ofstream output binary file.
   * \param[in] array_ Pointer to a character array into which data will be written.
+  * \param[in] recordTrace_ If set to true, the ADC trace will be written to output.
   * \return The number of bytes written to the file upon success and -1 otherwise.
   */
-int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
+int ChannelEvent::writeEvent(std::ofstream *file_, char *array_, bool recordTrace_/*=false*/){
 	if((!file_ && !array_) || (file_ && !file_->good())) return -1;
 
-	const unsigned short tlength = 0x0;
+	const unsigned short tlength = (!recordTrace_) ? 0x0 : traceLength;
 	
 	unsigned short chanIdentifier = 0xFFFF;
 	unsigned int eventTimeHiWord = 0xFFFFFFFF;
@@ -610,7 +604,6 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 	if(file_){
 		// Write data to the output file.
 		file_->write((char *)&chanIdentifier, 2);
-		//file_->write((char *)&traceLength, 2);
 		file_->write((char *)&tlength, 2);
 		file_->write((char *)&chanFlags, 2);
 		file_->write((char *)&cfdTime, 2);
@@ -631,7 +624,6 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 	if(array_){
 		// Write data to the character array.
 		memcpy(array_, (char *)&chanIdentifier, 2);
-		//memcpy(&array_[2], (char *)&traceLength, 2);
 		memcpy(&array_[2], (char *)&tlength, 2);
 		memcpy(&array_[4], (char *)&chanFlags, 2);
 		memcpy(&array_[6], (char *)&cfdTime, 2);
@@ -652,11 +644,11 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_){
 	int numBytes = headLength * 4;
 
 	// Write the ADC trace, if enabled.
-	/*if(traceLength != 0){ // Write the trace.
+	if(recordTrace_ && traceLength != 0){
 		if(file_) file_->write((char *)adcTrace, traceLength*2);
 		if(array_) memcpy(&array_[numBytes], (char *)adcTrace, traceLength*2);
 		numBytes += traceLength*2;
-	}*/
+	}
 
 	return numBytes;
 }

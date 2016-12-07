@@ -124,9 +124,6 @@ public:
 	  */
     virtual bool readEvent(unsigned int *buf, unsigned int &bufferIndex){ return false; }
 
-	/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
-	virtual size_t getEventLength(){ return 0; }
-    
 	/** Write an arbitrary event to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the
 	  * pointers must not be NULL.
@@ -189,18 +186,16 @@ public:
 	  */
 	bool readEvent(unsigned int *buf, unsigned int &bufferIndex);
 
-	/// Get the size of the derived XiaData event when written to disk by ::writeEvent (in 4-byte words).
-	size_t getEventLength();
-
 	/** Write a ChannelEvent to a binary output file. Output data may
 	  * be written to both an ofstream and a character array. One of the
 	  * pointers must not be NULL.
 	  * 
 	  * \param[in] file_ Pointer to an ofstream output binary file.
 	  * \param[in] array_ Pointer to a character array into which data will be written.
+	  * \param[in] recordTrace_ If set to true, the ADC trace will be written to output.
 	  * \return The number of bytes written to the file upon success and -1 otherwise.
 	  */
-	int writeEvent(std::ofstream *file_, char *array_);
+	int writeEvent(std::ofstream *file_, char *array_, bool recordTrace_=false);
 	
     /// Print additional information to the screen.
     virtual void print2();
