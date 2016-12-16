@@ -44,6 +44,18 @@ class Unpacker{
 	
 	/// Return the width of the raw event window in pixie16 clock ticks.
 	double GetEventWidth(){ return eventWidth; }
+
+	/// Return the delay of events in pixie16 clock ticks.
+	double GetEventDelay(){ return eventDelay; }
+
+	/** Get the method to use for raw event building.
+	  *  (0) : Untriggered, positive time. Raw event window opens toward positive time for any detected signal (default).
+	  *  (1) : Untriggered, negative time. Raw event window opens toward negative time for any detected signal.
+	  *  (2) : Triggered, positive time. Raw event window opens toward positive time for a specified start channel.
+	  *  (3) : Triggered, negative time. Raw event window opens toward negative time for a specified start channel.
+	  * \return The raw event building method.
+	  */
+	int GetRawEventMode(){ return rawEventMode; }
 	
 	/// Return the time of the first fired channel event.
 	double GetFirstTime(){ return firstTime; }
@@ -68,6 +80,19 @@ class Unpacker{
 	
 	/// Set the width of events in pixie16 clock ticks.
 	double SetEventWidth(double width_){ return (eventWidth = width_); }
+
+	/// Set the delay of events in pixie16 clock ticks.
+	double SetEventDelay(double delay_){ return (eventDelay = delay_); }
+
+	/** Set the method to use for raw event building.
+	  *  (0) : Untriggered, positive time. Raw event window opens toward positive time for any detected signal (default).
+	  *  (1) : Untriggered, negative time. Raw event window opens toward negative time for any detected signal.
+	  *  (2) : Triggered, positive time. Raw event window opens toward positive time for a specified start channel.
+	  *  (3) : Triggered, negative time. Raw event window opens toward negative time for a specified start channel.
+	  * \param[in]  mode_ Set the raw event building method.
+	  * \return The raw event building method upon success and -1 upon failure.
+	  */
+	int SetRawEventMode(const int &mode_){ return ((mode_ >= 0 || mode_ <= 3) ? (rawEventMode = mode_) : -1); }
 	
 	/// Set the address of the scan interface used for file operations.
 	ScanInterface *SetInterface(ScanInterface *interface_){ return (interface = interface_); }
@@ -113,7 +138,8 @@ class Unpacker{
 	void Clear();
 	
   protected:
-	double eventWidth; /// The width of the raw event in pixie clock ticks (8 ns).
+	double eventWidth; /// The width of the raw event window in pixie clock ticks (8 ns).
+	double eventDelay; /// The delay of the raw event window from a start signal in pixie clock ticks (8 ns).
 	
 	bool debug_mode; /// True if debug mode is set.
 	bool running; /// True if the scan is running.
@@ -151,16 +177,6 @@ class Unpacker{
 	  */	
 	int ReadSpillModule(unsigned int *buf);
 	
-	/** Set the method to use for raw event building.
-	  *  (0) : Untriggered, positive time. Raw event window opens toward positive time for any detected signal (default).
-	  *  (1) : Untriggered, negative time. Raw event window opens toward negative time for any detected signal.
-	  *  (2) : Triggered, positive time. Raw event window opens toward positive time for a specified start channel.
-	  *  (3) : Triggered, negative time. Raw event window opens toward negative time for a specified start channel.
-	  * \param[in]  mode_ Set the raw event building method.
-	  * \return The raw event building method upon success and -1 upon failure.
-	  */
-	int SetRawEventMode(const int &mode_){ return ((mode_ >= 0 || mode_ <= 3) ? (rawEventMode = mode_) : -1); }
-
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.
 	unsigned int maxWords; /// Maximum number of data words for revision D.

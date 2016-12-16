@@ -360,7 +360,8 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 
 Unpacker::Unpacker() :
 	eventWidth(62), // ~ 500 ns in 8 ns pixie clock ticks.
-   debug_mode(false),
+	eventDelay(0),
+	debug_mode(false),
 	running(true),
 	interface(NULL),
 	TOTALREAD(1000000), // Maximum number of data words to read.
