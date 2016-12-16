@@ -52,7 +52,7 @@ bool Unpacker::BuildRawEventA(){
 		// The first event time will be the minimum of these first components.
 		if(!GetFirstTime(firstTime))
 			return false;
-		std::cout << "BuildRawEvent: First event time is " << firstTime << " clock ticks.\n";
+		std::cout << "BuildRawEvent: First start event time is " << firstTime << " clock ticks.\n";
 		eventStartTime = firstTime;
 	}
 	else{ 
@@ -153,9 +153,9 @@ bool Unpacker::BuildRawEventB(){
 	rawEvent.push_back(current_start);
 
 	if(rawEventMode == 2) // Positive time window.
-		eventStartTime = current_start->time;
+		eventStartTime = current_start->time + eventDelay;
 	else if(rawEventMode == 3) // Negative time window.
-		eventStartTime = current_start->time - eventWidth;
+		eventStartTime = current_start->time - (eventWidth + eventDelay);
 
 	realStopTime = eventStartTime;
 	realStartTime = eventStartTime + eventWidth;
