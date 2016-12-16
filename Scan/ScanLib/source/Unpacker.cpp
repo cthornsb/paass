@@ -42,7 +42,7 @@ void Unpacker::TimeSort(){
   * event with a size governed by the event width.
   * \return True if the event list is not empty and false otherwise.
   */
-bool Unpacker::BuildRawEvent(){
+bool Unpacker::BuildRawEventA(){
 	if(!rawEvent.empty())
 		ClearRawEvent();
 
@@ -61,8 +61,11 @@ bool Unpacker::BuildRawEvent(){
 			return false;
 	}
 
-	realStartTime = eventStartTime+eventWidth;
+	if(rawEventMode == 1) // Negative time window.
+		eventStartTime = eventStartTime - eventWidth;
+
 	realStopTime = eventStartTime;
+	realStartTime = eventStartTime + eventWidth;
 	
 	unsigned int mod, chan;
 	std::string type, subtype, tag;
@@ -122,7 +125,101 @@ bool Unpacker::BuildRawEvent(){
 	numRawEvt++;
 	
 	return true;
-}	
+}
+
+/** Scan the time sorted event list and package the events into a raw
+  * event with a size governed by the event width.
+  * \return True if the start list is not empty and false otherwise.
+  */
+bool Unpacker::BuildRawEventB(){
+	if(startList.empty())
+		return false;
+
+	if(!rawEvent.empty())
+		ClearRawEvent();
+
+	if(numRawEvt == 0){// This is the first rawEvent. Do some special processing.
+		// Find the first start event. 
+		firstTime = startList.front()->time;
+		std::cout << "BuildRawEvent: First start event time is " << firstTime << " clock ticks.\n";
+	}
+
+	unsigned int mod, chan;
+	XiaData *current_event = NULL;
+	XiaData *current_start = startList.front();
+	startList.pop_front();
+
+	// Put the current start event into the raw event.
+	rawEvent.push_back(current_start);
+
+	if(rawEventMode == 2) // Positive time window.
+		eventStartTime = current_start->time;
+	else if(rawEventMode == 3) // Negative time window.
+		eventStartTime = current_start->time - eventWidth;
+
+	realStopTime = eventStartTime;
+	realStartTime = eventStartTime + eventWidth;
+	
+	// Loop over all time-sorted modules.
+	for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
+		if(iter->empty())
+			continue;
+			
+		// Loop over the list of channels that fired in this module.
+		while(!iter->empty()){
+			current_event = iter->front();
+			mod = current_event->modNum;
+			chan = current_event->chanNum;
+	
+			if(mod > MAX_PIXIE_MOD || chan > MAX_PIXIE_CHAN){ // Skip this channel
+				std::cout << "BuildRawEvent: Encountered non-physical Pixie ID (mod = " << mod << ", chan = " << chan << ")\n";
+				delete current_event;
+				iter->pop_front();
+				continue;
+			}
+
+			// Get the trigger time of the current event.
+			double difftime = current_event->time - eventStartTime;
+			
+			// Check for events in the event list which occur before the current start event.
+			// Since the start list is time-ordered, if this event falls before the current
+			// event window, then it will never fall into the following event windows.
+			if(difftime <= 0){
+				delete current_event;
+				iter->pop_front();
+				continue;
+			}
+			
+			// If the time difference between the current and previous event is 
+			// larger than the event width, we are finished with the current module.
+			if(difftime > eventWidth){ // 62 pixie ticks represents ~0.5 us
+				break;
+			}
+
+			// Check for the minimum time in this raw event.
+			if(current_event->time < realStartTime)
+				realStartTime = current_event->time;
+		
+			// Check for the maximum time in this raw event.
+			if(current_event->time > realStopTime)
+				realStopTime = current_event->time;
+
+			// Update raw stats output with the new event before adding it to the raw event.
+			RawStats(current_event);
+	
+			// Push this channel event into the rawEvent.
+			rawEvent.push_back(current_event);
+	
+			// Remove this event from the event list but do not delete it yet.
+			// Deleting of the channel events will be handled by clearing the rawEvent.
+			iter->pop_front();
+		}
+	}
+
+	numRawEvt++;
+	
+	return true;
+}
 
 /** Push an event into the event list.
   * \param[in]  event_ The XiaData to push onto the back of the event list.
@@ -138,7 +235,8 @@ bool Unpacker::AddEvent(XiaData *event_){
 		}
 	}
 	
-	eventList.at(event_->modNum).push_back(event_);
+	if(rawEventMode >= 2 && (event_->modNum == startMod && event_->chanNum == startChan)) startList.push_back(event_);
+	else eventList.at(event_->modNum).push_back(event_);
 	
 	return true;
 }
@@ -271,7 +369,10 @@ Unpacker::Unpacker() :
 	firstTime(0),
 	eventStartTime(0),
 	realStartTime(0),
-	realStopTime(0)
+	realStopTime(0),
+	rawEventMode(0), // The raw event building method to use.
+	startMod(0),
+	startChan(0)
 {
 	for(unsigned int i = 0; i <= MAX_PIXIE_MOD; i++){
 		for(unsigned int j = 0; j <= MAX_PIXIE_CHAN; j++){
@@ -430,9 +531,15 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 			// Once the vector of pointers eventlist is sorted based on time,
 			// begin the event processing in ScanList().
 			// ScanList will also clear the event list for us.
-			while(BuildRawEvent()){
-				// Process the event.
-				ProcessRawEvent(interface);
+			if(rawEventMode <= 1){
+				while(BuildRawEventA()){ // Process the event.
+					ProcessRawEvent(interface);
+				}
+			}
+			else{
+				while(BuildRawEventB()){ // Process the event.
+					ProcessRawEvent(interface);
+				}
 			}
 			
 			ClearEventList();

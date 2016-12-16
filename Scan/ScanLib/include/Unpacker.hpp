@@ -119,6 +119,7 @@ class Unpacker{
 	bool running; /// True if the scan is running.
 
 	std::vector<std::deque<XiaData*> > eventList; /// The list of all events in a spill.
+	std::deque<XiaData*> startList; /// The list of all start events in a spill.
 	std::deque<XiaData*> rawEvent; /// The list of all events in the event window.
 
 	ScanInterface *interface; /// Pointer to an object derived from ScanInterface.
@@ -149,6 +150,16 @@ class Unpacker{
 	  * \return The number of XiaData events read from the module buffer.
 	  */	
 	int ReadSpillModule(unsigned int *buf);
+	
+	/** Set the method to use for raw event building.
+	  *  (0) : Untriggered, positive time. Raw event window opens toward positive time for any detected signal (default).
+	  *  (1) : Untriggered, negative time. Raw event window opens toward negative time for any detected signal.
+	  *  (2) : Triggered, positive time. Raw event window opens toward positive time for a specified start channel.
+	  *  (3) : Triggered, negative time. Raw event window opens toward negative time for a specified start channel.
+	  * \param[in]  mode_ Set the raw event building method.
+	  * \return The raw event building method upon success and -1 upon failure.
+	  */
+	int SetRawEventMode(const int &mode_){ return ((mode_ >= 0 || mode_ <= 3) ? (rawEventMode = mode_) : -1); }
 
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.
@@ -163,6 +174,11 @@ class Unpacker{
 	double realStartTime; /// The time of the first xia event in the raw event.
 	double realStopTime; /// The time of the last xia event in the raw event.
 
+	int rawEventMode; /// Set the raw event building method to use.
+
+	unsigned short startMod; /// Start module to use for triggered raw event building.
+	unsigned short startChan; /// Start channel to use for triggered raw event building.
+
 	/** Scan the event list and sort it by timestamp.
 	  * \return Nothing.
 	  */
@@ -172,7 +188,13 @@ class Unpacker{
 	  * event with a size governed by the event width.
 	  * \return True if the event list is not empty and false otherwise.
 	  */
-	bool BuildRawEvent();
+	bool BuildRawEventA();
+	
+	/** Scan the time sorted event list and package the events into a raw
+	  * event with a size governed by the event width.
+	  * \return True if the event list is not empty and false otherwise.
+	  */
+	bool BuildRawEventB();
 	
 	/** Push an event into the event list.
 	  * \param[in]  event_ The XiaData to push onto the back of the event list.
