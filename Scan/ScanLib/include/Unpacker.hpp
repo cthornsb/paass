@@ -93,6 +93,13 @@ class Unpacker{
 	  * \return The raw event building method upon success and -1 upon failure.
 	  */
 	int SetRawEventMode(const int &mode_){ return ((mode_ >= 0 || mode_ <= 3) ? (rawEventMode = mode_) : -1); }
+
+	/** Set the start channel for building raw events.
+	  * \param[in]  mod_ The pixie module to use as the start.
+	  * \param[in]  chan_ The pixie channel to use as the start.
+	  * \return Nothing
+	  */
+	void SetStartChannel(const unsigned short &mod_, const unsigned short &chan_){ startMod=mod_; startChan=chan_; }
 	
 	/// Set the address of the scan interface used for file operations.
 	ScanInterface *SetInterface(ScanInterface *interface_){ return (interface = interface_); }
