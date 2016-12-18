@@ -56,6 +56,15 @@ class Unpacker{
 	  * \return The raw event building method.
 	  */
 	int GetRawEventMode(){ return rawEventMode; }
+
+	/// Return a pointer to the vector of channel times from the current raw event.	
+	std::vector<double> *GetRawEventChanTime();
+	
+	/// Return a pointer to the vector of channel IDs from the current raw event.
+	std::vector<double> *GetRawEventChanID();
+	
+	/// Return a pointer to the vector of channel flags from the current raw event.
+	std::vector<int> *GetRawEventFlag();
 	
 	/// Return the time of the current start event.
 	double GetStartEventTime(){ return startEventTime; }

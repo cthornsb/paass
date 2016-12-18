@@ -404,6 +404,24 @@ Unpacker::~Unpacker(){
 	ClearEventList();
 }
 
+/// Return a pointer to the vector of channel times from the current raw event.	
+std::vector<double> *Unpacker::GetRawEventChanTime(){ 
+	useRawEventStats = true;
+	return &chanTime; 
+}
+
+/// Return a pointer to the vector of channel IDs from the current raw event.
+std::vector<double> *Unpacker::GetRawEventChanID(){ 
+	useRawEventStats = true;
+	return &chanID; 
+}
+
+/// Return a pointer to the vector of channel flags from the current raw event.
+std::vector<int> *Unpacker::GetRawEventFlag(){ 
+	useRawEventStats = true;
+	return &inEvent; 
+}
+
 /** ReadSpill is responsible for constructing a list of pixie16 events from
   * a raw data spill. This method performs sanity checks on the spill and
   * calls ReadBuffer in order to construct the event list.
