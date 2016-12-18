@@ -57,20 +57,23 @@ class Unpacker{
 	  */
 	int GetRawEventMode(){ return rawEventMode; }
 	
+	/// Return the time of the current start event.
+	double GetStartEventTime(){ return startEventTime; }
+	
+	/// Return the start time of the current raw event window.
+	double GetRawEventStartTime(){ return rawEventStartTime; }
+	
+	/// Return the stop time of the current raw event window.
+	double GetRawEventStopTime(){ return rawEventStopTime; }
+	
 	/// Return the time of the first fired channel event.
 	double GetFirstTime(){ return firstTime; }
 	
 	/// Get the start time of the current raw event.
-	double GetEventStartTime(){ return eventStartTime; }
+	double GetEventStartTime(){ return rawEventStartTime; }
 	
 	/// Get the stop time of the current raw event.
-	double GetEventStopTime(){ return eventStartTime+eventWidth; }
-
-	/// Get the time of the first xia event in the raw event.
-	double GetRealStartTime(){ return realStartTime; }
-	
-	/// Get the time of the last xia event in the raw event.
-	double GetRealStopTime(){ return realStopTime; }
+	double GetEventStopTime(){ return rawEventStartTime+eventWidth; }
 
 	/// Return true if the scan is running and false otherwise.
 	bool IsRunning(){ return running; }
@@ -192,15 +195,21 @@ class Unpacker{
 	unsigned int channel_counts[MAX_PIXIE_MOD+1][MAX_PIXIE_CHAN+1]; /// Counters for each channel in each module.
 	
 	double firstTime; /// The first recorded event time.
-	double eventStartTime; /// The start time of the current raw event.
-
-	double realStartTime; /// The time of the first xia event in the raw event.
-	double realStopTime; /// The time of the last xia event in the raw event.
 
 	int rawEventMode; /// Set the raw event building method to use.
 
 	unsigned short startMod; /// Start module to use for triggered raw event building.
 	unsigned short startChan; /// Start channel to use for triggered raw event building.
+
+	std::vector<double> chanTime;
+	std::vector<double> chanID;
+	std::vector<bool> inEvent;
+	
+	double startEventTime;
+	double rawEventStartTime;
+	double rawEventStopTime;
+
+	bool useRawEventStats;
 
 	/** Scan the event list and sort it by timestamp.
 	  * \return Nothing.

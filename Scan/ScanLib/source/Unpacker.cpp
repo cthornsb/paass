@@ -53,20 +53,21 @@ bool Unpacker::BuildRawEventA(){
 		if(!GetFirstTime(firstTime))
 			return false;
 		std::cout << "BuildRawEvent: First start event time is " << firstTime << " clock ticks.\n";
-		eventStartTime = firstTime;
+		rawEventStartTime = firstTime;
 	}
 	else{ 
 		// Move the event window forward to the next valid channel fire.
-		if(!GetFirstTime(eventStartTime))
+		if(!GetFirstTime(rawEventStartTime))
 			return false;
 	}
 
 	if(rawEventMode == 1) // Negative time window.
-		eventStartTime = eventStartTime - eventWidth;
+		rawEventStartTime = rawEventStartTime - eventWidth;
 
-	realStopTime = eventStartTime;
-	realStartTime = eventStartTime + eventWidth;
-	
+	startEventTime = -1;
+	rawEventStartTime = rawEventStartTime;
+	rawEventStopTime = rawEventStartTime + eventWidth;
+
 	unsigned int mod, chan;
 	std::string type, subtype, tag;
 	XiaData *current_event = NULL;
@@ -92,23 +93,21 @@ bool Unpacker::BuildRawEventA(){
 			double currtime = current_event->time;
 
 			// Check for backwards time-skip. This is un-handled currently and needs fixed CRT!!!
-			if(currtime < eventStartTime)
-				std::cout << "BuildRawEvent: Detected backwards time-skip from start=" << eventStartTime << " to " << current_event->time << "???\n";
+			if(currtime < rawEventStartTime)
+				std::cout << "BuildRawEvent: Detected backwards time-skip from start=" << rawEventStartTime << " to " << current_event->time << "???\n";
 
 			// If the time difference between the current and previous event is 
 			// larger than the event width, finalize the current event, otherwise
 			// treat this as part of the current event
-			if((currtime - eventStartTime) > eventWidth){ // 62 pixie ticks represents ~0.5 us
+			if((currtime - rawEventStartTime) > eventWidth){ // 62 pixie ticks represents ~0.5 us
 				break;
 			}
 
-			// Check for the minimum time in this raw event.
-			if(currtime < realStartTime)
-				realStartTime = currtime;
-			
-			// Check for the maximum time in this raw event.
-			if(currtime > realStopTime)
-				realStopTime = currtime;
+			if(useRawEventStats){
+				chanID.push_back(16*mod+chan);
+				chanTime.push_back(current_event->time);
+				inEvent.push_back(true);
+			}
 
 			// Update raw stats output with the new event before adding it to the raw event.
 			RawStats(current_event);
@@ -120,6 +119,12 @@ bool Unpacker::BuildRawEventA(){
 			// Deleting of the channel events will be handled by clearing the rawEvent.
 			iter->pop_front();
 		}
+	}
+
+	if(useRawEventStats){
+		chanTime.clear();
+		chanID.clear();
+		inEvent.clear();
 	}
 
 	numRawEvt++;
@@ -153,13 +158,14 @@ bool Unpacker::BuildRawEventB(){
 	rawEvent.push_back(current_start);
 
 	if(rawEventMode == 2) // Positive time window.
-		eventStartTime = current_start->time + eventDelay;
+		rawEventStartTime = current_start->time + eventDelay;
 	else if(rawEventMode == 3) // Negative time window.
-		eventStartTime = current_start->time - (eventWidth + eventDelay);
+		rawEventStartTime = current_start->time - (eventWidth + eventDelay);
 
-	realStopTime = eventStartTime;
-	realStartTime = eventStartTime + eventWidth;
-	
+	startEventTime = current_start->time;
+	rawEventStartTime = rawEventStartTime;
+	rawEventStopTime = rawEventStartTime + eventWidth;
+
 	// Loop over all time-sorted modules.
 	for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
 		if(iter->empty())
@@ -179,12 +185,17 @@ bool Unpacker::BuildRawEventB(){
 			}
 
 			// Get the trigger time of the current event.
-			double difftime = current_event->time - eventStartTime;
+			double difftime = current_event->time - rawEventStartTime;
 			
 			// Check for events in the event list which occur before the current start event.
 			// Since the start list is time-ordered, if this event falls before the current
 			// event window, then it will never fall into the following event windows.
 			if(difftime <= 0){
+				if(useRawEventStats){
+					chanID.push_back(16*mod+chan);
+					chanTime.push_back(current_event->time);
+					inEvent.push_back(false);
+				}
 				delete current_event;
 				iter->pop_front();
 				continue;
@@ -195,14 +206,12 @@ bool Unpacker::BuildRawEventB(){
 			if(difftime > eventWidth){ // 62 pixie ticks represents ~0.5 us
 				break;
 			}
-
-			// Check for the minimum time in this raw event.
-			if(current_event->time < realStartTime)
-				realStartTime = current_event->time;
-		
-			// Check for the maximum time in this raw event.
-			if(current_event->time > realStopTime)
-				realStopTime = current_event->time;
+			
+			if(useRawEventStats){
+				chanID.push_back(16*mod+chan);
+				chanTime.push_back(current_event->time);
+				inEvent.push_back(true);
+			}
 
 			// Update raw stats output with the new event before adding it to the raw event.
 			RawStats(current_event);
@@ -214,6 +223,12 @@ bool Unpacker::BuildRawEventB(){
 			// Deleting of the channel events will be handled by clearing the rawEvent.
 			iter->pop_front();
 		}
+	}
+
+	if(useRawEventStats){
+		chanTime.clear();
+		chanID.clear();
+		inEvent.clear();
 	}
 
 	numRawEvt++;
@@ -368,12 +383,13 @@ Unpacker::Unpacker() :
 	maxWords(131072), // Maximum number of data words for revision D.	
 	numRawEvt(0), // Count of raw events read from file.
 	firstTime(0),
-	eventStartTime(0),
-	realStartTime(0),
-	realStopTime(0),
 	rawEventMode(0), // The raw event building method to use.
 	startMod(0),
-	startChan(0)
+	startChan(0),
+	startEventTime(0),
+	rawEventStartTime(0),
+	rawEventStopTime(0),
+	useRawEventStats(false)
 {
 	for(unsigned int i = 0; i <= MAX_PIXIE_MOD; i++){
 		for(unsigned int j = 0; j <= MAX_PIXIE_CHAN; j++){
@@ -586,8 +602,8 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 	// Reset the minimum times.
 	if(numRawEvt == 0)
 		firstTime = std::numeric_limits<double>::max();
-	realStartTime = std::numeric_limits<double>::max();
-	realStopTime = std::numeric_limits<double>::min();
+	rawEventStartTime = std::numeric_limits<double>::max();
+	rawEventStopTime = std::numeric_limits<double>::min();
 
 	// Set the index of the first event in the module buffer.
 	unsigned int bufIndex = 0;
@@ -602,12 +618,12 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 		}
 		
 		// Check for the minimum time in this raw event.
-		if(currentEvt->time < realStartTime) 
-			realStartTime = currentEvt->time;
+		if(currentEvt->time < rawEventStartTime) 
+			rawEventStartTime = currentEvt->time;
 			
 		// Check for the maximum time in this raw event.
-		if(currentEvt->time > realStopTime) 
-			realStopTime = currentEvt->time;
+		if(currentEvt->time > rawEventStopTime) 
+			rawEventStopTime = currentEvt->time;
 
 		// Does not handle multiple crates! CRT
 		channel_counts[currentEvt->modNum][currentEvt->chanNum]++;
@@ -622,7 +638,7 @@ bool Unpacker::ReadRawEvent(unsigned int *data, unsigned int nWords, bool is_ver
 		if(bufIndex < nWords && data[bufIndex] == 0xFFFFFFFF){
 			// Print the time of the very first raw event.
 			if(numRawEvt == 0){
-				firstTime = realStartTime;
+				firstTime = rawEventStartTime;
 				std::cout << "ReadRawEvent: First event time is " << firstTime << " clock ticks.\n";
 			}
 
