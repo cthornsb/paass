@@ -61,29 +61,23 @@ class Unpacker{
 	std::vector<double> *GetRawEventChanTime();
 	
 	/// Return a pointer to the vector of channel IDs from the current raw event.
-	std::vector<double> *GetRawEventChanID();
+	std::vector<int> *GetRawEventChanID();
 	
 	/// Return a pointer to the vector of channel flags from the current raw event.
-	std::vector<int> *GetRawEventFlag();
+	std::vector<bool> *GetRawEventFlag();
 	
-	/// Return the time of the current start event.
-	double GetStartEventTime(){ return startEventTime; }
+	/// Return a pointer to the time of the current start event.
+	double *GetStartEventTime();
 	
-	/// Return the start time of the current raw event window.
-	double GetRawEventStartTime(){ return rawEventStartTime; }
+	/// Return a pointer to the start time of the current raw event window.
+	double *GetRawEventStartTime();
 	
-	/// Return the stop time of the current raw event window.
-	double GetRawEventStopTime(){ return rawEventStopTime; }
+	/// Return a pointer to the stop time of the current raw event window.
+	double *GetRawEventStopTime();
 	
 	/// Return the time of the first fired channel event.
 	double GetFirstTime(){ return firstTime; }
 	
-	/// Get the start time of the current raw event.
-	double GetEventStartTime(){ return rawEventStartTime; }
-	
-	/// Get the stop time of the current raw event.
-	double GetEventStopTime(){ return rawEventStartTime+eventWidth; }
-
 	/// Return true if the scan is running and false otherwise.
 	bool IsRunning(){ return running; }
 
@@ -211,7 +205,7 @@ class Unpacker{
 	unsigned short startChan; /// Start channel to use for triggered raw event building.
 
 	std::vector<double> chanTime;
-	std::vector<double> chanID;
+	std::vector<int> chanID;
 	std::vector<bool> inEvent;
 	
 	double startEventTime;

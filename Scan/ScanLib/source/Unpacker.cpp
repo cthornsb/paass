@@ -72,6 +72,12 @@ bool Unpacker::BuildRawEventA(){
 	std::string type, subtype, tag;
 	XiaData *current_event = NULL;
 
+	if(useRawEventStats){
+		chanTime.clear();
+		chanID.clear();
+		inEvent.clear();
+	}
+
 	// Loop over all time-sorted modules.
 	for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
 		if(iter->empty())
@@ -121,12 +127,6 @@ bool Unpacker::BuildRawEventA(){
 		}
 	}
 
-	if(useRawEventStats){
-		chanTime.clear();
-		chanID.clear();
-		inEvent.clear();
-	}
-
 	numRawEvt++;
 	
 	return true;
@@ -165,6 +165,12 @@ bool Unpacker::BuildRawEventB(){
 	startEventTime = current_start->time;
 	rawEventStartTime = rawEventStartTime;
 	rawEventStopTime = rawEventStartTime + eventWidth;
+
+	if(useRawEventStats){
+		chanTime.clear();
+		chanID.clear();
+		inEvent.clear();
+	}
 
 	// Loop over all time-sorted modules.
 	for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
@@ -224,13 +230,7 @@ bool Unpacker::BuildRawEventB(){
 			iter->pop_front();
 		}
 	}
-
-	if(useRawEventStats){
-		chanTime.clear();
-		chanID.clear();
-		inEvent.clear();
-	}
-
+	
 	numRawEvt++;
 	
 	return true;
@@ -411,15 +411,33 @@ std::vector<double> *Unpacker::GetRawEventChanTime(){
 }
 
 /// Return a pointer to the vector of channel IDs from the current raw event.
-std::vector<double> *Unpacker::GetRawEventChanID(){ 
+std::vector<int> *Unpacker::GetRawEventChanID(){ 
 	useRawEventStats = true;
 	return &chanID; 
 }
 
 /// Return a pointer to the vector of channel flags from the current raw event.
-std::vector<int> *Unpacker::GetRawEventFlag(){ 
+std::vector<bool> *Unpacker::GetRawEventFlag(){ 
 	useRawEventStats = true;
 	return &inEvent; 
+}
+
+/// Return a pointer to the time of the current start event.
+double *Unpacker::GetStartEventTime(){ 
+	useRawEventStats = true;
+	return &startEventTime; 
+}
+
+/// Return a pointer to the start time of the current raw event window.
+double *Unpacker::GetRawEventStartTime(){ 
+	useRawEventStats = true;
+	return &rawEventStartTime; 
+}
+
+/// Return a pointer to the stop time of the current raw event window.
+double *Unpacker::GetRawEventStopTime(){ 
+	useRawEventStats = true;
+	return &rawEventStopTime; 
 }
 
 /** ReadSpill is responsible for constructing a list of pixie16 events from
