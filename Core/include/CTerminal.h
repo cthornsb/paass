@@ -30,6 +30,11 @@
 
 #include <curses.h>
 
+extern bool SIGNAL_SEGFAULT;
+extern bool SIGNAL_INTERRUPT;
+extern bool SIGNAL_TERMSTOP;
+extern bool SIGNAL_RESIZE;
+
 extern std::string CPP_APP_VERSION;
 
 template <typename T>
@@ -103,10 +108,27 @@ class CommandHolder{
 // Terminal
 ///////////////////////////////////////////////////////////////////////////////
 
+void sig_segv_handler(int ignore_);
+
 void sig_int_handler(int ignore_);
+
+void sig_tstp_handler(int ignore_);
+
+void signalResize(int ignore_);
 
 // Setup the interrupt signal intercept
 void setup_signal_handlers();
+
+void unset_signal_handlers();
+
+/** Check wheter the system issued a signal.
+  * \return System code if a system signal was thrown and -1 otherwise.
+  *  SIGSEGV
+  *  SIGINT
+  *  SIGTSTP
+  *  SIGWINCH
+  */
+int check_signals();
 
 class Terminal{
   private:
@@ -131,6 +153,7 @@ class Terminal{
 	std::string prompt;
 	///The tab complete flag
 	bool enableTabComplete;
+	bool doResizeWindow;
 	float commandTimeout_; ///<Time in seconds to wait for command.
 	bool insertMode_;
 

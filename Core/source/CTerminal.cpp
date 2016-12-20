@@ -29,14 +29,10 @@
 
 #include "TermColors.h"
 
-#ifdef USE_NCURSES
-
 bool SIGNAL_SEGFAULT = false;
 bool SIGNAL_INTERRUPT = false;
 bool SIGNAL_TERMSTOP = false;
 bool SIGNAL_RESIZE = false;
-
-#endif
 
 // Make a typedef for clarity when working with chrono.
 typedef std::chrono::system_clock sclock;
@@ -213,13 +209,33 @@ void unset_signal_handlers(){
 	signal(SIGWINCH, SIG_DFL);
 }
 
+int check_signals(){
+	if(SIGNAL_SEGFAULT){ // segmentation fault (SIGSEGV)
+		return SIGSEGV;
+	}
+	if(SIGNAL_INTERRUPT){ // ctrl-c (SIGINT)
+		SIGNAL_INTERRUPT = false;
+		return SIGINT;
+	}
+	if(SIGNAL_TERMSTOP){ // ctrl-z (SIGTSTP)
+		SIGNAL_TERMSTOP = false;
+		return SIGTSTP;
+	}
+	if(SIGNAL_RESIZE){
+		SIGNAL_RESIZE = false;
+		return SIGWINCH;
+	}
+
+	return -1;
+}
+
 void Terminal::resize_() {
 	//end session and then refresh to get new window sizes.
 	endwin();
 	refresh();
 
 	//Mark resize as handled
-	SIGNAL_RESIZE = false;
+	doResizeWindow = false;
 
 	//Get new window sizes
 	getmaxyx(stdscr, _winSizeY, _winSizeX);
@@ -258,7 +274,7 @@ void Terminal::pause(bool &flag) {
  */
 void Terminal::refresh_(){
 	if(!init){ return; }
-	if (SIGNAL_RESIZE) resize_();
+	if (doResizeWindow) resize_();
 
 	pnoutrefresh(output_window, 
 		_scrollbackBufferSize - _winSizeY - _scrollPosition + 1, 0,  //Pad corner to be placed in top left 
@@ -523,6 +539,8 @@ Terminal::Terminal() :
 	input_window(NULL),
 	status_window(NULL),
 	_statusWindowSize(0),
+	enableTabComplete(false),
+	doResizeWindow(false),
 	commandTimeout_(0),
 	insertMode_(false),
 	debug_(false),
@@ -845,19 +863,21 @@ std::string Terminal::GetCommand(std::string &args, const int &prev_cmd_return_/
 	else{
 		// Get a command from the user.
 		while(true){
-			if(SIGNAL_SEGFAULT){ // segmentation fault (SIGSEGV)
+			int sigRet = check_signals();
+			if(sigRet == SIGSEGV){ // segmentation fault (SIGSEGV)
 				Close();
 				return "_SIGSEGV_";
 			}
-			if(SIGNAL_INTERRUPT){ // ctrl-c (SIGINT)
-				SIGNAL_INTERRUPT = false;
+			else if(sigRet == SIGINT){ // ctrl-c (SIGINT)
 				output = "CTRL_C";
 				break;
 			}
-			if(SIGNAL_TERMSTOP){ // ctrl-z (SIGTSTP)
-				SIGNAL_TERMSTOP = false;
+			else if(sigRet == SIGTSTP){ // ctrl-z (SIGTSTP)
 				output = "CTRL_Z";
 				break;
+			}
+			else if(sigRet == SIGWINCH){
+				doResizeWindow = true;
 			}
 
 			//Update status message
