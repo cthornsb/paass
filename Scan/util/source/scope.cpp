@@ -499,6 +499,12 @@ Unpacker *scopeScanner::GetCore(){
 bool scopeScanner::AddEvent(XiaData *event_){
 	if(!event_){ return false; }
 
+	//Check for invalid channel.
+	if(event_->modNum != mod_ || event_->chanNum != chan_){  
+		delete event_;
+		return false;
+	}
+
 	//Check for empty trace.
 	if(event_->traceLength == 0){
 		std::cout << msgHeader << "Warning! Trace capture is not enabled for this channel!\n";
@@ -507,18 +513,15 @@ bool scopeScanner::AddEvent(XiaData *event_){
 		return false;
 	}
 
-	// Pass this event to the correct processor
+	//Check threshold.
 	int maximum = *std::max_element(event_->adcTrace, event_->adcTrace + event_->traceLength);
-	if(event_->modNum == mod_ && event_->chanNum == chan_){  
-		//Check threhsold.
-		if (maximum < threshLow_) {
-			delete event_;
-			return false;
-		}
-		if (threshHigh_ > threshLow_ && maximum > threshHigh_) {
-			delete event_;
-			return false;
-		}
+	if (maximum < threshLow_) {
+		delete event_;
+		return false;
+	}
+	else if (threshHigh_ > threshLow_ && maximum > threshHigh_) {
+		delete event_;
+		return false;
 	}
 
 	//Get the first event int the FIFO.
