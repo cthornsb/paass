@@ -65,10 +65,6 @@ double PaulauskasFitFunc(double *x, double *p) {
 
 /// Default constructor.
 scopeUnpacker::scopeUnpacker(const unsigned int &mod/*=0*/, const unsigned int &chan/*=0*/) : Unpacker(){
-	mod_ = mod;
-	chan_ = chan;
-	threshLow_ = 0;
-	threshHigh_ = -1;	
 }
 
 /** Return a pointer to a new XiaData channel event.
@@ -96,28 +92,12 @@ void scopeUnpacker::ProcessRawEvent(ScanInterface *addr_/*=NULL*/){
 		current_event = rawEvent.front();
 		rawEvent.pop_front();
 
-		// Safety catches for null event or empty adcTrace.
-		if(!current_event || current_event->traceLength == 0){
-			continue;
-		}
+		// Safety catches for null event.
+		if(!current_event) continue;
 
-		// Pass this event to the correct processor
-		int maximum = *std::max_element(current_event->adcTrace, current_event->adcTrace+current_event->traceLength);
-		if(current_event->modNum == mod_ && current_event->chanNum == chan_){  
-			//Check threhsold.
-			if (maximum < threshLow_) {
-				delete current_event;
-				continue;
-			}
-			if (threshHigh_ > threshLow_ && maximum > threshHigh_) {
-				delete current_event;
-				continue;
-			}
-
-			//Store the waveform in the stack of waveforms to be displayed.
-			if(addr_->AddEvent(current_event)){
-				addr_->ProcessEvents();
-			}
+		//Store the waveform in the stack of waveforms to be displayed.
+		if(addr_->AddEvent(current_event)){
+			addr_->ProcessEvents();
 		}
 	}
 }
@@ -150,6 +130,11 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	num_displayed = 0;
 	just_plotted = 0;
 	time(&last_trace);
+
+	mod_ = mod;
+	chan_ = chan;
+	threshLow_ = 0;
+	threshHigh_ = -1;
 	
 	// Variables for root graphics
 	rootapp = new TApplication("scope", 0, NULL);
@@ -215,7 +200,7 @@ void scopeScanner::ResetGraph(unsigned int size) {
 	hist->SetBins(x_vals.size(), x_vals.front(), x_vals.back() + ADC_TIME_STEP, 1, 0, 1);
 
 	std::stringstream stream;
-	stream << "M" << ((scopeUnpacker*)core)->GetMod() << "C" << ((scopeUnpacker*)core)->GetChan();
+	stream << "M" << mod_ << "C" << chan_;
 	graph->SetTitle(stream.str().c_str());
 	hist->SetTitle(stream.str().c_str());
 
@@ -471,7 +456,7 @@ bool scopeScanner::Initialize(std::string prefix_){
 	if(init){ return false; }
 
 	// Print a small welcome message.
-	std::cout << "  Displaying traces for mod = " << ((scopeUnpacker*)core)->GetMod() << ", chan = " << ((scopeUnpacker*)core)->GetChan() << ".\n";
+	std::cout << "  Displaying traces for mod = " << mod_ << ", chan = " << chan_ << ".\n";
 
 	return (init = true);
 }
@@ -513,6 +498,28 @@ Unpacker *scopeScanner::GetCore(){
   */
 bool scopeScanner::AddEvent(XiaData *event_){
 	if(!event_){ return false; }
+
+	//Check for empty trace.
+	if(event_->traceLength == 0){
+		std::cout << msgHeader << "Warning! Trace capture is not enabled for this channel!\n";
+		stop_scan();
+		delete event_;
+		return false;
+	}
+
+	// Pass this event to the correct processor
+	int maximum = *std::max_element(event_->adcTrace, event_->adcTrace + event_->traceLength);
+	if(event_->modNum == mod_ && event_->chanNum == chan_){  
+		//Check threhsold.
+		if (maximum < threshLow_) {
+			delete event_;
+			return false;
+		}
+		if (threshHigh_ > threshLow_ && maximum > threshHigh_) {
+			delete event_;
+			return false;
+		}
+	}
 
 	//Get the first event int the FIFO.
 	ChannelEvent *channel_event = new ChannelEvent(event_);
@@ -617,9 +624,9 @@ void scopeScanner::SyntaxStr(char *name_){
   */
 void scopeScanner::ExtraArguments(){
 	if(userOpts.at(0).active)
-		std::cout << msgHeader << "Set module to (" << ((scopeUnpacker*)core)->SetMod(atoi(userOpts.at(0).argument.c_str())) << ").\n";
+		std::cout << msgHeader << "Set module to (" << (mod_ = atoi(userOpts.at(0).argument.c_str())) << ").\n";
 	if(userOpts.at(1).active)
-		std::cout << msgHeader << "Set channel to (" << ((scopeUnpacker*)core)->SetChan(atoi(userOpts.at(1).argument.c_str())) << ").\n";
+		std::cout << msgHeader << "Set channel to (" << (chan_ = atoi(userOpts.at(1).argument.c_str())) << ").\n";
 }
 
 /** ExtraCommands is used to send command strings to classes derived
@@ -636,8 +643,8 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 			ClearEvents();
 		
 			// Set the module and channel.
-			((scopeUnpacker*)core)->SetMod(atoi(args_.at(0).c_str()));
-			((scopeUnpacker*)core)->SetChan(atoi(args_.at(1).c_str()));
+			mod_ = atoi(args_.at(0).c_str());
+			chan_ = atoi(args_.at(1).c_str());
 
 			resetGraph_ = true;
 		}
@@ -651,12 +658,12 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 	}
 	else if (cmd_ == "thresh") {
 		if (args_.size() == 1) {
-			((scopeUnpacker*)core)->SetThreshLow(atoi(args_.at(0).c_str()));
-			((scopeUnpacker*)core)->SetThreshHigh(-1);
+			threshLow_ = atoi(args_.at(0).c_str());
+			threshHigh_ = -1;
 		}
 		else if (args_.size() == 2) {
-			((scopeUnpacker*)core)->SetThreshLow(atoi(args_.at(0).c_str()));
-			((scopeUnpacker*)core)->SetThreshHigh(atoi(args_.at(1).c_str()));
+			threshLow_ = atoi(args_.at(0).c_str());
+			threshHigh_ = atoi(args_.at(1).c_str());
 		}
 		else {
 			std::cout << msgHeader << "Invalid number of parameters to 'thresh'\n";

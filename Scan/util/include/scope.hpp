@@ -38,28 +38,7 @@ class scopeUnpacker : public Unpacker {
 	  */
 	XiaData *GetNewEvent();
 
-	int SetMod(const unsigned int &mod){ return(mod >= 0 ? (mod_ = mod) : (mod_ = 0)); }
-	
-	int SetChan(const unsigned int &chan){ return(chan >= 0 ? (chan_ = chan) : (chan_ = 0)); }
-	
-	void SetThreshLow(const int &threshLow){ threshLow_ = threshLow; }
-	
-	void SetThreshHigh(const int &threshHigh){ threshHigh_ = threshHigh; }
-
-	unsigned int GetMod(){ return mod_; }
-	
-	unsigned int GetChan(){ return chan_; }
-	
-	int GetThreshLow(){ return threshLow_; }
-	
-	int GetThreshHigh(){ return threshHigh_; }
-
   private:
-	unsigned int mod_; ///< The module of the signal of interest.
-	unsigned int chan_; ///< The channel of the signal of interest.
-	int threshLow_;
-	int threshHigh_;
-
 	/** Process all events in the event list.
 	  * \param[in]  addr_ Pointer to a ScanInterface object.
 	  * \return Nothing.
@@ -92,11 +71,27 @@ class scopeScanner : public ScanInterface {
  	/// Return the maximum number of events to store.
  	size_t GetNumEvents(){ return numEvents; }
 
+	unsigned int GetMod(){ return mod_; }
+	
+	unsigned int GetChan(){ return chan_; }
+	
+	int GetThreshLow(){ return threshLow_; }
+	
+	int GetThreshHigh(){ return threshHigh_; }
+
 	/// Set the number of seconds to wait between drawing of traces.
 	void SetDelay(int delay){ delay_ = (delay>1)?delay:1; }
 
 	/// Set the maximum number of events to store.
 	void SetNumEvents(size_t num_){ numEvents = num_; }
+
+	int SetMod(const unsigned int &mod){ return(mod >= 0 ? (mod_ = mod) : (mod_ = 0)); }
+	
+	int SetChan(const unsigned int &chan){ return(chan >= 0 ? (chan_ = chan) : (chan_ = 0)); }
+	
+	void SetThreshLow(const int &threshLow){ threshLow_ = threshLow; }
+	
+	void SetThreshHigh(const int &threshHigh){ threshHigh_ = threshHigh; }
 
 	/** ExtraCommands is used to send command strings to classes derived
 	  * from ScanInterface. If ScanInterface receives an unrecognized
@@ -195,6 +190,11 @@ class scopeScanner : public ScanInterface {
 	void ClearEvents();
 
   private:
+	unsigned int mod_; ///< The module of the signal of interest.
+	unsigned int chan_; ///< The channel of the signal of interest.
+	int threshLow_;
+	int threshHigh_;
+
 	unsigned int numAvgWaveforms_;
 	unsigned int num_displayed; ///< The number of displayed traces.
 	unsigned int just_plotted; ///< The number of traces currently displayed on the screen.

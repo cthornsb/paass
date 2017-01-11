@@ -285,6 +285,9 @@ class ScanInterface{
 	/// Restart the scan from the beginning of the file.
 	bool restart(const unsigned long &offset_=0);
 
+	/// Stop the scan.
+	void stop_scan();
+
   private:
 	unsigned int maxShmSizeL; /// Max size of shared memory buffer in pixie words (4050 + 2 header words)
 	unsigned int maxShmSize; /// Max size of shared memory buffer in bytes
@@ -335,9 +338,6 @@ class ScanInterface{
 
 	/// Start the scan.
 	void start_scan();
-	
-	/// Stop the scan.
-	void stop_scan();
 	
 	/// Print a command line argument help dialogue.
 	void help(char *name_);
