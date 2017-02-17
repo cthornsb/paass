@@ -6,12 +6,12 @@ add_library(ScanObjects OBJECT ${ScanSources})
 
 if(BUILD_SHARED_LIBS)
     message(STATUS "Building Scan Shared Objects")
-    add_library(Scan SHARED $<TARGET_OBJECTS:ScanObjects>)
-    target_link_libraries(Scan PixieCoreStatic ${CMAKE_THREAD_LIBS_INIT})
+    add_library(PaassScan SHARED $<TARGET_OBJECTS:ScanObjects>)
+    target_link_libraries(PaassScan PixieCoreStatic ${CMAKE_THREAD_LIBS_INIT})
     if (${CURSES_FOUND})
-        target_link_libraries(Scan ${CURSES_LIBRARIES})
+        target_link_libraries(PaassScan ${CURSES_LIBRARIES})
     endif()
-    install(TARGETS Scan DESTINATION lib)
+    install(TARGETS PaassScan DESTINATION lib)
 endif(BUILD_SHARED_LIBS)
 
 #Create PixieScan static library and add ncurses if we have it
