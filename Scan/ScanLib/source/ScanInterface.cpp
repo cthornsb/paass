@@ -593,7 +593,7 @@ void ScanInterface::RunControl(){
 			databuff.Reset();
 		
 			while(true){
-				if(file_stop_offset != 0 && input_file.tellg() >= file_stop_offset){
+				if(is_running && (file_stop_offset != 0 && input_file.tellg() >= file_stop_offset)){
 					if(batch_mode) break;
 					stop_scan();
 				}
@@ -672,7 +672,7 @@ void ScanInterface::RunControl(){
 			pldData.Reset();
 		
 			while(pldData.Read(&input_file, (char*)data, nBytes, 4*max_spill_size, dry_run_mode)){
-				if(file_stop_offset != 0 && input_file.tellg() >= file_stop_offset){
+				if(is_running && (file_stop_offset != 0 && input_file.tellg() >= file_stop_offset)){
 					if(batch_mode) break;
 					stop_scan();
 				}
