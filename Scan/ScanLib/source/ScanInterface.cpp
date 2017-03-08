@@ -804,7 +804,7 @@ void ScanInterface::CmdControl(){
 			std::cout << "   help (h)            - Display this dialogue\n";
 			std::cout << "   version (v)         - Display Poll2 version information\n";
 			std::cout << "   run                 - Start acquisition\n";
-			std::cout << "   stop                - Stop acquisition\n";
+			std::cout << "   stop [offset]       - Stop acquisition\n";
 			std::cout << "   file <filename>     - Load an input file\n";
 			std::cout << "   rewind [offset]     - Rewind to the beginning of the file\n";
 			std::cout << "   sync                - Wait for the current run to finish\n";
@@ -817,7 +817,8 @@ void ScanInterface::CmdControl(){
 			start_scan();
 		}
 		else if(cmd == "stop"){ // Stop acquisition.
-			stop_scan();
+			if(p_args > 0){ file_stop_offset = strtoull(arguments.at(0).c_str(), NULL, 0)*4; }
+			else{ stop_scan(); }
 		}
 		else if(cmd == "debug"){ // Toggle debug mode
 			if(debug_mode){
