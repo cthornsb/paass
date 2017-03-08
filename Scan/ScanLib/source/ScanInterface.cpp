@@ -176,7 +176,7 @@ void ScanInterface::help(char *name_){
   * \param[in]  offset_ The position, with respect to the start of the file, to seek to.
   * \return True upon success and false otherwise.
   */
-bool ScanInterface::rewind(const unsigned long &offset_/*=0*/){
+bool ScanInterface::rewind(const std::streampos &offset_/*=0*/){
 	if(!scan_init){ return false; }
 
 	// Ensure that the scan is not running.
@@ -190,8 +190,8 @@ bool ScanInterface::rewind(const unsigned long &offset_/*=0*/){
 	}
 
 	// Move to the first word in the file.
-	std::cout << " Seeking to word no. " << offset_ << " in file\n";
-	input_file.seekg(offset_*4, input_file.beg);
+	std::cout << " Seeking to word no. " << offset_/4 << " in file\n";
+	input_file.seekg(offset_, input_file.beg);
 	std::cout << " Input file is now at " << input_file.tellg() << " bytes\n";
 
 	// Notify that the user has rewound to the start of the file.
@@ -204,7 +204,7 @@ bool ScanInterface::rewind(const unsigned long &offset_/*=0*/){
   * \param[in]  offset_ The position, with respect to the start of the file, to seek to.
   * \return True upon success and false otherwise.
   */
-bool ScanInterface::restart(const unsigned long &offset_/*=0*/){
+bool ScanInterface::restart(const std::streampos &offset_/*=0*/){
 	if(is_running){
 		stop_scan();
 		rewind(offset_);
@@ -326,6 +326,23 @@ bool ScanInterface::open_input_file(const std::string &fname_){
 
 	// Notify that the user has loaded a new file.
 	Notify("LOAD_FILE");
+
+	// Set the starting offset of the input file.
+	if(file_start_percent > 0.0)
+		file_start_offset = (std::streampos)(file_start_percent*file_length);
+
+	// Seek to the beginning of the file.
+	if(file_start_offset != 0){ 
+		std::cout << msgHeader << "Starting scan at word no. " << file_start_offset/4 << " (" << 100.0*file_start_offset/file_length << "%)\n";
+		rewind(file_start_offset); 
+	}
+
+	// Set the file stop point.
+	if(file_stop_percent > 0.0)
+		file_stop_offset = (std::streampos)(file_stop_percent*file_length);
+
+	if(file_stop_offset != 0)
+		std::cout << msgHeader << "Scanning up to word no. " << file_stop_offset/4 << " (" << 100.0*file_stop_offset/file_length << "%)\n";
 	
 	return true;	
 }
@@ -387,6 +404,9 @@ ScanInterface::ScanInterface(Unpacker *core_/*=NULL*/){
 	file_format = -1;
 
 	file_start_offset = 0;
+	file_start_percent = -1;
+	file_stop_offset = 0;
+	file_stop_percent = -1;
 	num_spills_recvd = 0;
 	
 	total_stopped = true;
@@ -412,12 +432,12 @@ ScanInterface::ScanInterface(Unpacker *core_/*=NULL*/){
 
 	// Push back all of the arguments. Annoying, but we only need to do this once.
 	baseOpts.push_back(optionExt("batch", no_argument, NULL, 'b', "", "Run in batch mode (i.e. with no command line)"));
-	baseOpts.push_back(optionExt("config", required_argument, NULL, 'c',
-								 "<path>", "Specify path to setup to use for scan"));
+	baseOpts.push_back(optionExt("config", required_argument, NULL, 'c', "<path>", "Specify path to setup to use for scan"));
 	baseOpts.push_back(optionExt("counts", no_argument, NULL, 0, "", "Write all recorded channel counts to a file"));
 	baseOpts.push_back(optionExt("debug", no_argument, NULL, 0, "", "Enable readout debug mode"));
 	baseOpts.push_back(optionExt("dry-run", no_argument, NULL, 0, "", "Extract spills from file, but do no processing"));
-	baseOpts.push_back(optionExt("fast-fwd", required_argument, NULL, 0, "<word>", "Skip ahead to a specified word in the file (start of file at zero)"));
+	baseOpts.push_back(optionExt("fast-fwd", required_argument, NULL, 0, "<word>", "Skip ahead to a specified fraction (.xx) or word in the file (start of file at zero)"));
+	baseOpts.push_back(optionExt("stop-point", required_argument, NULL, 0, "<word>", "Stop scanning the input file when the specified fraction (.xx) or word is reached"));
 	baseOpts.push_back(optionExt("help", no_argument, NULL, 'h', "", "Display this dialogue"));
 	baseOpts.push_back(optionExt("input", required_argument, NULL, 'i', "<filename>", "Specifies the input file to analyze"));
 	baseOpts.push_back(optionExt("output", required_argument, NULL, 'o', "<filename>", "Specifies the name of the output file. Default is \"out\""));
@@ -572,7 +592,12 @@ void ScanInterface::RunControl(){
 			// Reset the buffer reader to default values.
 			databuff.Reset();
 		
-			while(true){ 
+			while(true){
+				if(file_stop_offset != 0 && input_file.tellg() >= file_stop_offset){
+					if(batch_mode) break;
+					stop_scan();
+				}
+ 
 				if(kill_all == true){ 
 					break;
 				}
@@ -647,6 +672,11 @@ void ScanInterface::RunControl(){
 			pldData.Reset();
 		
 			while(pldData.Read(&input_file, (char*)data, nBytes, 4*max_spill_size, dry_run_mode)){
+				if(file_stop_offset != 0 && input_file.tellg() >= file_stop_offset){
+					if(batch_mode) break;
+					stop_scan();
+				}
+
 				if(kill_all == true){ 
 					break;
 				}
@@ -822,7 +852,7 @@ void ScanInterface::CmdControl(){
 			}
 		}
 		else if(cmd == "rewind"){ // Rewind the file to the start position
-			if(p_args > 0){ rewind(strtoul(arguments.at(0).c_str(), NULL, 0)); }
+			if(p_args > 0){ rewind(strtoull(arguments.at(0).c_str(), NULL, 0)*4); }
 			else{ rewind(); }
 		}
 		else if(cmd == "sync"){ // Wait until the current run is completed.
@@ -842,7 +872,7 @@ void ScanInterface::CmdControl(){
 			else{ std::cout << msgHeader << "Cannot display file position while scan is running.\n"; }
 		}
 		else if(cmd == "restart"){ // Rewind the file to the start position
-			if(p_args > 0){ restart(strtoul(arguments.at(0).c_str(), NULL, 0)); }
+			if(p_args > 0){ restart(strtoull(arguments.at(0).c_str(), NULL, 0)*4); }
 			else{ restart(); }
 		}
 		else if(cmd == "event-width"){ // Set the unpacker raw event width (ns).
@@ -913,7 +943,16 @@ bool ScanInterface::Setup(int argc, char *argv[]){
 				dry_run_mode = true;
 			}
 			else if(strcmp("fast-fwd", longOpts[idx].name) == 0) {
-				file_start_offset = atoll(optarg);
+				if(!isDecimal(optarg)) // Specified as word offset
+					file_start_offset = strtoull(optarg, NULL, 0)*4;
+				else // Specified as percentage offset
+					file_start_percent = strtod(optarg, NULL);
+			}
+			else if(strcmp("stop-point", longOpts[idx].name) == 0) {
+				if(!isDecimal(optarg)) // Specified as word offset
+					file_stop_offset = strtoull(optarg, NULL, 0)*4;
+				else // Specified as percentage offset
+					file_stop_percent = strtod(optarg, NULL);
 			}
 			else{
 				for(std::vector<optionExt>::iterator iter = userOpts.begin(); iter != userOpts.end(); iter++){
@@ -1061,9 +1100,6 @@ int ScanInterface::Execute(){
 		return 1; 
 	}
 
-	// Seek to the beginning of the file.
-	if(file_start_offset != 0){ rewind(); }
-
 	// Process the file.
 	if(!batch_mode){
 		// Start the run control thread
@@ -1174,4 +1210,20 @@ void addOption(optionExt opt_, std::vector<optionExt> &vec, std::string &optstr)
 		}
 	}
 	vec.push_back(opt_);
+}
+
+/** Check whether or not a cstring is a numeric value containing a decimal.
+  * \return True if the input cstring is a numeric value with a decimal and false otherwise.
+  */
+bool isDecimal(const char *str_){
+	size_t length = strlen(str_);
+	bool retval = false;
+	for(size_t i = 0; i < length; i++){
+		if(str_[i] == '.'){
+			retval = true;
+			continue;
+		}
+		else if(str_[i] < 0x30 || str_[i] > 0x39) return false; // Not a number.
+	}
+	return retval;
 }

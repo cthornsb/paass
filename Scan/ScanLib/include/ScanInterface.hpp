@@ -280,10 +280,10 @@ class ScanInterface{
 	virtual Unpacker *GetCore();
 
 	/// Seek to a specified position in the file.
-	bool rewind(const unsigned long &offset_=0);
+	bool rewind(const std::streampos &offset_=0);
 
 	/// Restart the scan from the beginning of the file.
-	bool restart(const unsigned long &offset_=0);
+	bool restart(const std::streampos &offset_=0);
 
 	/// Stop the scan.
 	void stop_scan();
@@ -303,7 +303,10 @@ class ScanInterface{
 	int file_format; /// Input file format to use (0=.ldf, 1=.pld, 2=.pld(presort)).
 	
 	unsigned long num_spills_recvd; /// The total number of good spills received from either the input file or shared memory.
-	unsigned long file_start_offset; /// The first word in the file at which to start scanning.
+	std::streampos file_start_offset; /// The first word in the file at which to start scanning.
+	std::streampos file_stop_offset; /// The final word in the file to scan (approximate).
+	double file_start_percent; /// The percentage of the way through the file at which to start scanning.
+	double file_stop_percent; /// The percentage of the file to scan before stopping (approximate).
 	
 	bool write_counts; /// Set to true if raw channel counts are to be written to file.
 
@@ -354,5 +357,10 @@ std::string get_extension(std::string filename_, std::string &prefix);
   * \return Nothing.
   */
 void addOption(optionExt opt_, std::vector<optionExt> &vec, std::string &optstr);
+
+/** Check whether or not a cstring is a numeric value containing a decimal.
+  * \return True if the input cstring is a numeric value with a decimal and false otherwise.
+  */
+bool isDecimal(const char *str_);
 
 #endif
