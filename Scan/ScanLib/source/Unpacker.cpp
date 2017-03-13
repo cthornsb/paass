@@ -137,11 +137,47 @@ bool Unpacker::BuildRawEventA(){
   * \return True if the start list is not empty and false otherwise.
   */
 bool Unpacker::BuildRawEventB(){
-	if(startList.empty())
-		return false;
-
 	if(!rawEvent.empty())
 		ClearRawEvent();
+
+	unsigned int mod, chan;
+	XiaData *current_event = NULL;
+
+	if(startList.empty()){
+		if(chanWhitelist.empty()) 
+			return false;
+
+		// Loop over all time-sorted modules.
+		for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
+			if(iter->empty())
+				continue;
+			
+			// Loop over the list of channels that fired in this module.
+			while(!iter->empty()){
+				current_event = iter->front();
+				mod = current_event->modNum;
+				chan = current_event->chanNum;
+				if(IsInWhitelist(current_event->modNum, current_event->chanNum)){
+					if(useRawEventStats){
+						chanID.push_back(16*mod+chan);
+						chanTime.push_back(current_event->time);
+						inEvent.push_back(false);
+					}
+
+					// Update raw stats output with the new event before adding it to the raw event.
+					RawStats(current_event);
+	
+					// Push this channel event into the rawEvent.
+					rawEvent.push_back(current_event);
+				}	
+				// Remove this event from the event list but do not delete it yet.
+				// Deleting of the channel events will be handled by clearing the rawEvent.
+				iter->pop_front();
+			}
+		}
+
+		return !rawEvent.empty();
+	}	
 
 	if(numRawEvt == 0){// This is the first rawEvent. Do some special processing.
 		// Find the first start event. 
@@ -149,8 +185,6 @@ bool Unpacker::BuildRawEventB(){
 		std::cout << "BuildRawEvent: First start event time is " << firstTime << " clock ticks.\n";
 	}
 
-	unsigned int mod, chan;
-	XiaData *current_event = NULL;
 	XiaData *current_start = startList.front();
 	startList.pop_front();
 
@@ -196,7 +230,7 @@ bool Unpacker::BuildRawEventB(){
 			// Check for events in the event list which occur before the current start event.
 			// Since the start list is time-ordered, if this event falls before the current
 			// event window, then it will never fall into the following event windows.
-			if(difftime <= 0){
+			if(difftime <= 0 && !IsInWhitelist(mod, chan)){
 				if(useRawEventStats){
 					chanID.push_back(16*mod+chan);
 					chanTime.push_back(current_event->time);
@@ -250,11 +284,7 @@ bool Unpacker::AddEvent(XiaData *event_){
 		}
 	}
 	
-	if(rawEventMode >= 2){
-		if(event_->modNum == startMod && event_->chanNum == startChan) startList.push_back(event_);
-		else if(IsInWhitelist(event_->modNum, event_->chanNum)) // Don't add the event to the start list, because we don't want it to open a new raw event.
-			rawEvent.push_back(event_); // Add the event directly to the raw event.
-	}
+	if(rawEventMode >= 2 && (event_->modNum == startMod && event_->chanNum == startChan)) startList.push_back(event_);
 	else eventList.at(event_->modNum).push_back(event_);
 	
 	return true;
@@ -599,14 +629,15 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 			// Once the vector of pointers eventlist is sorted based on time,
 			// begin the event processing in ScanList().
 			// ScanList will also clear the event list for us.
-			while(true){ // Build a new raw event and process it.
-				if(rawEventMode <= 1)
-					BuildRawEventA();
-				else
-					BuildRawEventB();
-				if(rawEvent.empty()) break;
-				ProcessRawEvent(interface);
-				ClearRawEvent();
+			if(rawEventMode <= 1){
+				while(BuildRawEventA()){ // Build a new raw event and process it.
+					ProcessRawEvent(interface);
+				}
+			}
+			else{
+				while(BuildRawEventB()){ // Build a new raw event and process it.
+					ProcessRawEvent(interface);
+				}
 			}
 
 			ClearEventList();
