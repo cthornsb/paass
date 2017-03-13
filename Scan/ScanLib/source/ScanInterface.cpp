@@ -817,7 +817,13 @@ void ScanInterface::CmdControl(){
 			start_scan();
 		}
 		else if(cmd == "stop"){ // Stop acquisition.
-			if(p_args > 0){ file_stop_offset = strtoull(arguments.at(0).c_str(), NULL, 0)*4; }
+			if(p_args > 0){ 
+				if(!isDecimal(arguments.at(0).c_str()))
+					file_stop_offset = strtoull(arguments.at(0).c_str(), NULL, 0)*4; 
+				else
+					file_stop_offset = (std::streampos)(strtod(arguments.at(0).c_str(), NULL)*file_length);
+				std::cout << msgHeader << "Scanning up to word no. " << file_stop_offset/4 << " (" << 100.0*file_stop_offset/file_length << "%)\n";
+			}
 			else{ stop_scan(); }
 		}
 		else if(cmd == "debug"){ // Toggle debug mode
@@ -853,7 +859,14 @@ void ScanInterface::CmdControl(){
 			}
 		}
 		else if(cmd == "rewind"){ // Rewind the file to the start position
-			if(p_args > 0){ rewind(strtoull(arguments.at(0).c_str(), NULL, 0)*4); }
+			if(p_args > 0){ 
+				if(!isDecimal(arguments.at(0).c_str()))
+					file_start_offset = strtoull(arguments.at(0).c_str(), NULL, 0)*4;
+				else
+					file_start_offset = (std::streampos)(strtod(arguments.at(0).c_str(), NULL)*file_length);
+				std::cout << msgHeader << "Starting scan at word no. " << file_start_offset/4 << " (" << 100.0*file_start_offset/file_length << "%)\n";
+				rewind(file_start_offset); 
+			}
 			else{ rewind(); }
 		}
 		else if(cmd == "sync"){ // Wait until the current run is completed.
@@ -873,7 +886,14 @@ void ScanInterface::CmdControl(){
 			else{ std::cout << msgHeader << "Cannot display file position while scan is running.\n"; }
 		}
 		else if(cmd == "restart"){ // Rewind the file to the start position
-			if(p_args > 0){ restart(strtoull(arguments.at(0).c_str(), NULL, 0)*4); }
+			if(p_args > 0){ 
+				if(!isDecimal(arguments.at(0).c_str()))
+					file_start_offset = strtoull(arguments.at(0).c_str(), NULL, 0)*4;
+				else
+					file_start_offset = (std::streampos)(strtod(arguments.at(0).c_str(), NULL)*file_length);
+				std::cout << msgHeader << "Starting scan at word no. " << file_start_offset/4 << " (" << 100.0*file_start_offset/file_length << "%)\n";
+				restart(file_start_offset);
+			}
 			else{ restart(); }
 		}
 		else if(cmd == "event-width"){ // Set the unpacker raw event width (ns).

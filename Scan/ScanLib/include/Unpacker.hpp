@@ -150,6 +150,25 @@ class Unpacker{
 	  */
 	void Clear();
 	
+	/** Add a pixie channel to the event whitelist. The whitelist may be used to add
+	  * channels to the raw event even if there is no start signal.
+	  * \param[in]  id Pixie channel id to add to the whitelist.
+	  * \return Nothing.
+	  */
+	void AddToWhitelist(const int &id){ chanWhitelist.push_back(id); }
+
+	/** Add a pixie module & channel pair to the event whitelist.
+	  * \param[in]  mod The pixie module of the pair.
+	  * \param[in]  chan The pixie channel of the pair.
+	  * \return Nothing.
+	  */
+	void AddToWhitelist(const int &mod, const int &chan){ AddToWhitelist(mod*16+chan); }
+
+	/** Clear the channel whitelist.
+	  * \return Nothing.
+	  */
+	void ClearWhitelist(){ chanWhitelist.clear(); }
+
   protected:
 	double eventWidth; /// The width of the raw event window in pixie clock ticks (8 ns).
 	double eventDelay; /// The delay of the raw event window from a start signal in pixie clock ticks (8 ns).
@@ -189,6 +208,19 @@ class Unpacker{
 	  * \return The number of XiaData events read from the module buffer.
 	  */	
 	int ReadSpillModule(unsigned int *buf);
+
+	/** Check if a specified pixie id is in the channel id whitelist.
+	  * \param[in]  id The channel id to search for in the channel whitelist.
+	  * \return True if the channel is in the whitelist and false otherwise.
+	  */
+	bool IsInWhitelist(const int &id);
+
+	/** Chekc if a specified module and channel pair is in the channel id whitelist.
+	  * \param[in]  mod The pixie module of the pair.
+	  * \param[in]  chan The pixie channel of the pair.
+	  * \return True if the module and channel pair is in the whitelist and false otherwise.
+	  */
+	bool IsInWhitelist(const int &mod, const int &chan){ return IsInWhitelist(16*mod+chan); }
 	
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.
@@ -207,6 +239,8 @@ class Unpacker{
 	std::vector<double> chanTime;
 	std::vector<int> chanID;
 	std::vector<bool> inEvent;
+	
+	std::vector<int> chanWhitelist;
 	
 	double startEventTime;
 	double rawEventStartTime;

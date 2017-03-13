@@ -250,7 +250,11 @@ bool Unpacker::AddEvent(XiaData *event_){
 		}
 	}
 	
-	if(rawEventMode >= 2 && (event_->modNum == startMod && event_->chanNum == startChan)) startList.push_back(event_);
+	if(rawEventMode >= 2){
+		if(event_->modNum == startMod && event_->chanNum == startChan) startList.push_back(event_);
+		else if(IsInWhitelist(event_->modNum, event_->chanNum)) // Don't add the event to the start list, because we don't want it to open a new raw event.
+			rawEvent.push_back(event_); // Add the event directly to the raw event.
+	}
 	else eventList.at(event_->modNum).push_back(event_);
 	
 	return true;
@@ -371,6 +375,17 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 	}
 	
 	return numEvents;
+}
+
+/** Check if a specified pixie id is in the channel id whitelist.
+  * \param[in]  id The channel id to search for in the channel whitelist.
+  * \return True if the channel is in the whitelist and false otherwise.
+  */
+bool Unpacker::IsInWhitelist(const int &id){
+	for(std::vector<int>::iterator iter = chanWhitelist.begin(); iter != chanWhitelist.end(); ++iter){
+		if(id == *iter) return true;
+	}
+	return false;
 }
 
 Unpacker::Unpacker() :
@@ -584,17 +599,16 @@ bool Unpacker::ReadSpill(unsigned int *data, unsigned int nWords, bool is_verbos
 			// Once the vector of pointers eventlist is sorted based on time,
 			// begin the event processing in ScanList().
 			// ScanList will also clear the event list for us.
-			if(rawEventMode <= 1){
-				while(BuildRawEventA()){ // Process the event.
-					ProcessRawEvent(interface);
-				}
+			while(true){ // Build a new raw event and process it.
+				if(rawEventMode <= 1)
+					BuildRawEventA();
+				else
+					BuildRawEventB();
+				if(rawEvent.empty()) break;
+				ProcessRawEvent(interface);
+				ClearRawEvent();
 			}
-			else{
-				while(BuildRawEventB()){ // Process the event.
-					ProcessRawEvent(interface);
-				}
-			}
-			
+
 			ClearEventList();
 			
 			// Once the eventlist has been scanned, reset the number 
