@@ -144,12 +144,13 @@ bool Unpacker::BuildRawEventB(){
 	XiaData *current_event = NULL;
 
 	if(startList.empty()){
-		if(chanWhitelist.empty()) 
+		if(whitelist.empty()) 
 			return false;
 
 		// Loop over all time-sorted modules.
+		int whitelistModCount = 0;
 		for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
-			if(iter->empty())
+			if(!IsInWhitelist(whitelistModCount++, -1) || iter->empty())
 				continue;
 			
 			// Loop over the list of channels that fired in this module.
@@ -407,13 +408,20 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
 	return numEvents;
 }
 
-/** Check if a specified pixie id is in the channel id whitelist.
-  * \param[in]  id The channel id to search for in the channel whitelist.
-  * \return True if the channel is in the whitelist and false otherwise.
+/** Chekc if a specified module and channel pair is in the channel id whitelist.
+  * \param[in]  mod The pixie module of the pair.
+  * \param[in]  chan The pixie channel of the pair.
+  * \return True if the module and channel pair is in the whitelist and false otherwise.
+  *         If chan is negative, return true if the specified module has channels defined in the whitelist.
   */
-bool Unpacker::IsInWhitelist(const int &id){
-	for(std::vector<int>::iterator iter = chanWhitelist.begin(); iter != chanWhitelist.end(); ++iter){
-		if(id == *iter) return true;
+bool Unpacker::IsInWhitelist(const int &mod, const int &chan){
+	if(mod > (int)whitelist.size()) return false;
+	else if(chan < 0){
+		if(whitelist.at(mod).empty()) return false;
+		return true;
+	}
+	for(std::vector<int>::iterator iter = whitelist.at(mod).begin(); iter != whitelist.at(mod).end(); ++iter){
+		if(chan == *iter) return true;
 	}
 	return false;
 }
@@ -758,4 +766,17 @@ void Unpacker::Write(){
 void Unpacker::Clear(){
 	ClearRawEvent();
 	ClearEventList();
+}
+
+/** Add a pixie module & channel pair to the event whitelist.
+  * \param[in]  mod The pixie module of the pair.
+  * \param[in]  chan The pixie channel of the pair.
+  * \return Nothing.
+  */
+void Unpacker::AddToWhitelist(const int &mod, const int &chan){
+	// Check for the need to add a new vector to the whitelist.
+	while ((int)whitelist.size() < mod+1) {
+		whitelist.push_back(std::vector<int>());
+	}
+	whitelist.at(mod).push_back(chan);
 }

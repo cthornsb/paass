@@ -155,19 +155,19 @@ class Unpacker{
 	  * \param[in]  id Pixie channel id to add to the whitelist.
 	  * \return Nothing.
 	  */
-	void AddToWhitelist(const int &id){ chanWhitelist.push_back(id); }
+	void AddToWhitelist(const int &id){ AddToWhitelist(id/16, id%16); }
 
 	/** Add a pixie module & channel pair to the event whitelist.
 	  * \param[in]  mod The pixie module of the pair.
 	  * \param[in]  chan The pixie channel of the pair.
 	  * \return Nothing.
 	  */
-	void AddToWhitelist(const int &mod, const int &chan){ AddToWhitelist(mod*16+chan); }
+	void AddToWhitelist(const int &mod, const int &chan);
 
 	/** Clear the channel whitelist.
 	  * \return Nothing.
 	  */
-	void ClearWhitelist(){ chanWhitelist.clear(); }
+	void ClearWhitelist(){ whitelist.clear(); }
 
   protected:
 	double eventWidth; /// The width of the raw event window in pixie clock ticks (8 ns).
@@ -213,14 +213,15 @@ class Unpacker{
 	  * \param[in]  id The channel id to search for in the channel whitelist.
 	  * \return True if the channel is in the whitelist and false otherwise.
 	  */
-	bool IsInWhitelist(const int &id);
+	bool IsInWhitelist(const int &id){ return IsInWhitelist(id/16, id%16); }
 
 	/** Chekc if a specified module and channel pair is in the channel id whitelist.
 	  * \param[in]  mod The pixie module of the pair.
 	  * \param[in]  chan The pixie channel of the pair.
 	  * \return True if the module and channel pair is in the whitelist and false otherwise.
+	  *         If chan is negative, return true if the specified module has channels defined in the whitelist.
 	  */
-	bool IsInWhitelist(const int &mod, const int &chan){ return IsInWhitelist(16*mod+chan); }
+	bool IsInWhitelist(const int &mod, const int &chan);
 	
   private:
 	unsigned int TOTALREAD; /// Maximum number of data words to read.
@@ -239,8 +240,8 @@ class Unpacker{
 	std::vector<double> chanTime;
 	std::vector<int> chanID;
 	std::vector<bool> inEvent;
-	
-	std::vector<int> chanWhitelist;
+
+	std::vector<std::vector<int> > whitelist;
 	
 	double startEventTime;
 	double rawEventStartTime;
