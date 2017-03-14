@@ -170,9 +170,9 @@ bool Unpacker::BuildRawEventB(){
 	
 					// Push this channel event into the rawEvent.
 					rawEvent.push_back(current_event);
-				}	
-				// Remove this event from the event list but do not delete it yet.
-				// Deleting of the channel events will be handled by clearing the rawEvent.
+				}
+				else{ delete current_event; }
+				// Remove this event from the event list.
 				iter->pop_front();
 			}
 		}
