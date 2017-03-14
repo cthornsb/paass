@@ -163,9 +163,11 @@ bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsign
 
 	// Handle saturated filter energy.
 	if(saturatedBit){ energy = 32767; }
-		
+	
+	const unsigned long long HIGH_BIT_MULT = 0x00000000FFFFFFFF;
+	
 	// Calculate the 48-bit trigger time.
-	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
+	time = eventTimeLo + eventTimeHi * HIGH_BIT_MULT;
 
 	if(module == 9999) modNum = slotNum;
 	else modNum = module;
