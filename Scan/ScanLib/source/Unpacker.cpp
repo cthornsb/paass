@@ -284,7 +284,7 @@ bool Unpacker::AddEvent(XiaData *event_){
 			eventList.push_back(std::deque<XiaData*>());
 		}
 	}
-	
+
 	if(rawEventMode >= 2 && (event_->modNum == startMod && event_->chanNum == startChan)) startList.push_back(event_);
 	else eventList.at(event_->modNum).push_back(event_);
 	
@@ -415,6 +415,7 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
   *         If chan is negative, return true if the specified module has channels defined in the whitelist.
   */
 bool Unpacker::IsInWhitelist(const int &mod, const int &chan){
+	if(whitelist.empty()) return false;
 	if(mod > (int)whitelist.size()) return false;
 	else if(chan < 0){
 		if(whitelist.at(mod).empty()) return false;
