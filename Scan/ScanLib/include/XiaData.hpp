@@ -154,7 +154,7 @@ class ChannelEvent : public XiaData {
 	unsigned short cfdIndex; /// The index in the trace just above the CFD threshold.
 	
 	float cfdPar[7]; /// Array of floats for storing cfd polynomial fits.
-	
+
 	float *cfdvals; ///
 	
 	/// Default constructor.
@@ -171,9 +171,12 @@ class ChannelEvent : public XiaData {
 	
 	/// Integrate the baseline corrected trace in the range [start_, stop_] and return the result.
 	float IntegratePulse(const size_t &start_=0, const size_t &stop_=0, bool calcQdc2=false);
-	
-	/// Perform CFD analysis on the waveform.
+
+	/// Perform traditional CFD analysis on the waveform.
 	float AnalyzeCFD(const float &F_=0.5, const size_t &D_=1, const size_t &L_=1);
+	
+	/// Perform polynomial CFD analysis on the waveform.
+	float AnalyzePolyCFD(const float &F_=0.5);
 	
 	/// Clear all variables and clear the trace vector and arrays.
 	void Clear();

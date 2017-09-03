@@ -352,6 +352,7 @@ ChannelEvent::ChannelEvent(XiaData *event_) : XiaData(event_) {
 }
 
 ChannelEvent::~ChannelEvent(){
+	if(cfdvals) delete[] cfdvals;
 }
 
 float ChannelEvent::ComputeBaseline(){
@@ -419,10 +420,10 @@ float ChannelEvent::IntegratePulse(const size_t &start_/*=0*/, const size_t &sto
 	return qdc;
 }
 
-/// Perform CFD analysis on the waveform.
+/// Perform traditional CFD analysis on the waveform.
 float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, const size_t &L_/*=1*/){
 	if(traceLength == 0 || baseline < 0){ return -9999; }
-	/*if(!cfdvals)
+	if(!cfdvals)
 		cfdvals = new float[traceLength];
 	
 	float cfdMinimum = 9999;
@@ -452,8 +453,13 @@ float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, 
 				break;
 			}
 		}
-	}*/
+	}
 
+	return phase;
+}
+
+/// Perform polynomial CFD analysis on the waveform.
+float ChannelEvent::AnalyzePolyCFD(const float &F_/*=0.5*/){
 	float threshold = F_*maximum + baseline;
 
 	phase = -9999;
@@ -486,6 +492,8 @@ void ChannelEvent::Clear(){
 
 	valid_chan = false;
 	ignore = false;
+
+	cfdvals = NULL;
 }
 
 /** Responsible for decoding ChannelEvents from a binary input file.
