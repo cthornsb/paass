@@ -1,5 +1,3 @@
-
-
 #include "TF1.h"
 #include "TGraph.h"
 
@@ -32,8 +30,9 @@ double paulauskas(double *x, double *p){
 // class TraceFitter
 ///////////////////////////////////////////////////////////////////////////////
 
-TraceFitter::TraceFitter() : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.3) {
+TraceFitter::TraceFitter() : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.1) {
 	func = new TF1("func", paulauskas, 0, 1, 5);
+	func->SetParNames("baseline","amplitude","phase","beta","gamma");
 }
 
 TraceFitter::TraceFitter(const char* funcStr_) : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.3) {
@@ -42,6 +41,15 @@ TraceFitter::TraceFitter(const char* funcStr_) : fittingLow(5), fittingHigh(10),
 
 TraceFitter::TraceFitter(double (*funcPtr_)(double *, double *), int npar_) : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.3) {
 	func = new TF1("func", funcPtr_, 0, 1, npar_);
+}
+
+TraceFitter::~TraceFitter(){
+	delete func;
+}
+
+/// Return a pointer to the TF1 parameter array.
+double *TraceFitter::GetParameters(){
+	return func->GetParameters(); 
 }
 
 /// Set the range of the fit as [maxIndex-low_, maxIndex+high_].
@@ -72,8 +80,8 @@ bool TraceFitter::FitPulse(ChannelEvent *event_){
 		graph->SetPoint(graphIndex, startIndex+graphIndex, event_->adcTrace[startIndex+graphIndex]);
 
 	// Set the initial fitting conditions.
-	func->SetParameter(0, event_->baseline); // Baseline of pulse
-	func->SetParameter(1, 0.5 * event_->qdc); // Normalization of pulse
+	func->FixParameter(0, event_->baseline); // Baseline of pulse
+	func->SetParameter(1, event_->max_ADC/0.0247056); // Normalization of pulse
 	func->SetParameter(2, event_->max_index-fittingLow); // Phase (leading edge of pulse) (adc clock ticks)
 	func->FixParameter(3, beta);
 	func->FixParameter(4, gamma);
@@ -85,7 +93,7 @@ bool TraceFitter::FitPulse(ChannelEvent *event_){
 	graph->Fit(func, "QR");
 	
 	// Update the phase of the trace.
-	event_->baseline = func->GetParameter(0);
+	//event_->baseline = func->GetParameter(0);
 	event_->phase = func->GetParameter(2);
 	
 	delete graph;

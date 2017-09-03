@@ -42,10 +42,10 @@ class TraceFitter{
 		
 	TraceFitter(double (*func_)(double *, double *), int npar_);
 
-	virtual ~TraceFitter(){}
+	~TraceFitter();
 
 	/// Return a pointer to the TF1 parameter array.
-	double *GetParameters(){ return func->GetParameters(); }
+	double *GetParameters();
 
 	/// Return a pointer to the root TF1 function.
 	TF1 *GetFunction(){ return func; }
@@ -57,7 +57,7 @@ class TraceFitter{
 	bool SetBetaGamma(const double &beta_, const double &gamma_);
 	
 	/// Fit a single trace.
-	virtual bool FitPulse(ChannelEvent *event_);	
+	bool FitPulse(ChannelEvent *event_);	
 };
 
 #endif
