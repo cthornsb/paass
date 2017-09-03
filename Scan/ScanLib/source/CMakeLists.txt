@@ -1,5 +1,5 @@
 #Set the scan sources that we will make a lib out of
-set(ScanSources ScanInterface.cpp Unpacker.cpp XiaData.cpp)
+set(ScanSources ScanInterface.cpp Unpacker.cpp XiaData.cpp TraceFitter.cpp)
 
 #Add the sources to the library
 add_library(ScanObjects OBJECT ${ScanSources})
