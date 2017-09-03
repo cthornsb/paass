@@ -460,6 +460,8 @@ float ChannelEvent::AnalyzeCFD(const float &F_/*=0.5*/, const size_t &D_/*=1*/, 
 
 /// Perform polynomial CFD analysis on the waveform.
 float ChannelEvent::AnalyzePolyCFD(const float &F_/*=0.5*/){
+	if(traceLength == 0 || baseline < 0){ return -9999; }
+
 	float threshold = F_*maximum + baseline;
 
 	phase = -9999;
