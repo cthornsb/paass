@@ -113,22 +113,22 @@ void XiaData::clearQDCs(){
 
 /// Print event information to the screen.
 void XiaData::print(){
-	std::cout << " energy:      " << this->energy << std::endl;
-	std::cout << " time:        " << this->time << std::endl;
+	std::cout << " energy:	  " << this->energy << std::endl;
+	std::cout << " time:	    " << this->time << std::endl;
 	std::cout << " traceLength: " << this->traceLength << std::endl;
-	std::cout << " numQdcs:     " << this->numQdcs << std::endl;
-	std::cout << " slotNum:     " << this->slotNum << std::endl;
-	std::cout << " modNum:      " << this->modNum << std::endl;
-	std::cout << " chanNum:     " << this->chanNum << std::endl;
-	std::cout << " cfdTime:     " << this->cfdTime << std::endl;
+	std::cout << " numQdcs:	 " << this->numQdcs << std::endl;
+	std::cout << " slotNum:	 " << this->slotNum << std::endl;
+	std::cout << " modNum:	  " << this->modNum << std::endl;
+	std::cout << " chanNum:	 " << this->chanNum << std::endl;
+	std::cout << " cfdTime:	 " << this->cfdTime << std::endl;
 	std::cout << " eventTimeLo: " << this->eventTimeLo << std::endl;
 	std::cout << " eventTimeHi: " << this->eventTimeHi << std::endl;
 	print2();
 }
 
 /** Responsible for decoding individual pixie events from a binary input file.
-  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  module      The current module number being scanned.
+  * \param[in]  buf	     Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  module	  The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
   * \return Only false currently. This method is only a stub.
   */
@@ -137,27 +137,27 @@ bool XiaData::readEventRevD(unsigned int *buf, unsigned int &bufferIndex, unsign
 }
 
 /** Responsible for decoding individual pixie events from a binary input file.
-  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  module      The current module number being scanned.
+  * \param[in]  buf	     Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  module	  The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
   * \return True if the event was successfully read, or false otherwise.
   */
 bool XiaData::readEventRevF(unsigned int *buf, unsigned int &bufferIndex, unsigned int module/*=9999*/){	
 	// Decoding event data... see pixie16app.c
 	// buf points to the start of channel data
-	chanNum        =  (buf[bufferIndex] & 0x0000000F);
-	slotNum        =  (buf[bufferIndex] & 0x000000F0) >> 4;
-	crateNum       =  (buf[bufferIndex] & 0x00000F00) >> 8;
+	chanNum	    =  (buf[bufferIndex] & 0x0000000F);
+	slotNum	    =  (buf[bufferIndex] & 0x000000F0) >> 4;
+	crateNum	   =  (buf[bufferIndex] & 0x00000F00) >> 8;
 	headerLength   =  (buf[bufferIndex] & 0x0001F000) >> 12;
-	eventLength    =  (buf[bufferIndex] & 0x1FFE0000) >> 17;
+	eventLength	=  (buf[bufferIndex] & 0x1FFE0000) >> 17;
 	virtualChannel = ((buf[bufferIndex] & 0x20000000) != 0);
 	saturatedBit   = ((buf[bufferIndex] & 0x40000000) != 0);
-	pileupBit      = ((buf[bufferIndex] & 0x80000000) != 0);	
+	pileupBit	  = ((buf[bufferIndex] & 0x80000000) != 0);	
 
 	eventTimeLo =  buf[bufferIndex + 1];
 	eventTimeHi =  buf[bufferIndex + 2] & 0x0000FFFF;
-	cfdTime     = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
-	energy      =  buf[bufferIndex + 3] & 0x0000FFFF;
+	cfdTime	 = (buf[bufferIndex + 2] & 0xFFFF0000) >> 16;
+	energy	  =  buf[bufferIndex + 3] & 0x0000FFFF;
 	traceLength = (buf[bufferIndex + 3] & 0x7FFF0000) >> 16;
 	outOfRange = ((buf[bufferIndex] & 0x80000000) != 0);
 
@@ -282,14 +282,14 @@ int XiaData::writeEventRevF(std::ofstream *file_, char *array_){
 	unsigned int headLength = eventLength - (unsigned int)traceLength/2;
 	
 	// Build up the channel identifier.
-	chanIdentifier &= ~(0x0000000F & (chanNum));              // Pixie channel number
-	chanIdentifier &= ~(0x000000F0 & (modNum << 4));          // Pixie module number (NOT the slot number)
-	chanIdentifier &= ~(0x00000F00 & (crateNum << 8));        // Crate number
-	chanIdentifier &= ~(0x0001F000 & (headLength << 12));     // Header length
-	chanIdentifier &= ~(0x1FFE0000 & (eventLength << 17));    // Event length
+	chanIdentifier &= ~(0x0000000F & (chanNum));	          // Pixie channel number
+	chanIdentifier &= ~(0x000000F0 & (modNum << 4));	      // Pixie module number (NOT the slot number)
+	chanIdentifier &= ~(0x00000F00 & (crateNum << 8));	    // Crate number
+	chanIdentifier &= ~(0x0001F000 & (headLength << 12));	 // Header length
+	chanIdentifier &= ~(0x1FFE0000 & (eventLength << 17));	// Event length
 	chanIdentifier &= ~(0x20000000 & (virtualChannel << 29)); // Virtual channel bit
 	chanIdentifier &= ~(0x40000000 & (saturatedBit << 30));   // Saturated channel bit
-	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));      // Pileup bit
+	chanIdentifier &= ~(0x80000000 & (pileupBit << 31));	  // Pileup bit
 	chanIdentifier = ~chanIdentifier;
 	
 	// Build up the high event time and CFD time.
@@ -489,8 +489,8 @@ void ChannelEvent::Clear(){
 }
 
 /** Responsible for decoding ChannelEvents from a binary input file.
-  * \param[in]  buf         Pointer to an array of unsigned ints containing raw event data.
-  * \param[in]  modNum     The current module number being scanned.
+  * \param[in]  buf	     Pointer to an array of unsigned ints containing raw event data.
+  * \param[in]  modNum	 The current module number being scanned.
   * \param[out] bufferIndex The current index in the module buffer.
   * \return True if the event was successfully read, or false otherwise.
   */
@@ -529,7 +529,7 @@ bool ChannelEvent::readEvent(unsigned int *buf, unsigned int &bufferIndex){
 
 	eventTimeLo =  buf[bufferIndex + 2];
 	eventTimeHi =  buf[bufferIndex + 3] & 0x0000FFFF;
-	energy      = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
+	energy	  = (buf[bufferIndex + 3] & 0xFFFF0000) >> 16;
 
 	// Calculate the 48-bit trigger time.	
 	time = eventTimeLo + eventTimeHi * 0xFFFFFFFF;
@@ -579,7 +579,7 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_, bool recordTrac
 	if(qdc2 > 0) headLength += 1;
 
 	// Build up the channel identifier.
-	chanIdentifier &= ~(0x000F & (chanNum));       // Pixie channel number
+	chanIdentifier &= ~(0x000F & (chanNum));	   // Pixie channel number
 	chanIdentifier &= ~(0x00F0 & (modNum << 4));   // Pixie module number (NOT the slot number)
 	chanIdentifier &= ~(0x0F00 & (crateNum << 8)); // Crate number
 	chanIdentifier &= ~(0xF000 & (headLength << 12));
@@ -588,12 +588,12 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_, bool recordTrac
 	// Build up the channel flags half-word.
 	unsigned short chanFlags = 0x0;
 	if(virtualChannel) chanFlags |= 1;
-	if(pileupBit)      chanFlags |= 2;
+	if(pileupBit)	  chanFlags |= 2;
 	if(saturatedBit)   chanFlags |= 4;
 	if(cfdForceTrig)   chanFlags |= 8;
 	if(cfdTrigSource)  chanFlags |= 16;
-	if(outOfRange)     chanFlags |= 32;
-	if(valid_chan)     chanFlags |= 64;
+	if(outOfRange)	 chanFlags |= 32;
+	if(valid_chan)	 chanFlags |= 64;
 	/*if(statement) chanFlags |= 128;
 	if(statement) chanFlags |= 256;
 	if(statement) chanFlags |= 512;
@@ -664,11 +664,11 @@ int ChannelEvent::writeEvent(std::ofstream *file_, char *array_, bool recordTrac
 /// Print additional information to the screen.
 void ChannelEvent::print2(){
 	std::cout << " hiresTime:   " << this->hiresTime << std::endl;
-	std::cout << " phase:       " << this->phase << std::endl;
-	std::cout << " baseline:    " << this->baseline << std::endl;
-	std::cout << " stddev:      " << this->stddev << std::endl;
-	std::cout << " maximum:     " << this->maximum << std::endl;
-	std::cout << " qdc:         " << this->qdc << std::endl;
+	std::cout << " phase:	   " << this->phase << std::endl;
+	std::cout << " baseline:	" << this->baseline << std::endl;
+	std::cout << " stddev:	  " << this->stddev << std::endl;
+	std::cout << " maximum:	 " << this->maximum << std::endl;
+	std::cout << " qdc:	     " << this->qdc << std::endl;
 }
 
 float calculateP2(const short &x0, unsigned short *y, float *p){
