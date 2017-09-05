@@ -1,4 +1,5 @@
 #include "TF1.h"
+#include "TH1D.h"
 #include "TGraph.h"
 
 #include "TraceFitter.hpp"
@@ -30,16 +31,16 @@ double paulauskas(double *x, double *p){
 // class TraceFitter
 ///////////////////////////////////////////////////////////////////////////////
 
-TraceFitter::TraceFitter() : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.1) {
+TraceFitter::TraceFitter() : fittingLow(5), fittingHigh(10), beta(0.5), gamma(0.1), xAxisMult(1), floatingMode(false) {
 	func = new TF1("func", paulauskas, 0, 1, 5);
 	func->SetParNames("baseline","amplitude","phase","beta","gamma");
 }
 
-TraceFitter::TraceFitter(const char* funcStr_) : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.3) {
+TraceFitter::TraceFitter(const char* funcStr_) : fittingLow(5), fittingHigh(10), beta(0.5), gamma(0.3), xAxisMult(1), floatingMode(false) {
 	func = new TF1("func", funcStr_, 0, 1);
 }
 
-TraceFitter::TraceFitter(double (*funcPtr_)(double *, double *), int npar_) : fittingLow(5), fittingHigh(10), adcTimeStep(4), beta(0.5), gamma(0.3) {
+TraceFitter::TraceFitter(double (*funcPtr_)(double *, double *), int npar_) : fittingLow(5), fittingHigh(10), beta(0.5), gamma(0.3), xAxisMult(1), floatingMode(false) {
 	func = new TF1("func", funcPtr_, 0, 1, npar_);
 }
 
@@ -70,8 +71,33 @@ bool TraceFitter::SetBetaGamma(const double &beta_, const double &gamma_){
 	return true;
 }
 
-bool TraceFitter::FitPulse(ChannelEvent *event_){
-	if(!event_){ return false; }
+/// Set the initial conditions for the fit.
+bool TraceFitter::SetInitialConditions(ChannelEvent *event_){
+	if(!event_) return false;
+
+	// Set the initial fitting conditions.
+	func->FixParameter(0, event_->baseline); // Baseline of pulse
+	func->SetParameter(1, event_->max_ADC/0.0247056); // Normalization of pulse
+	func->SetParameter(2, (event_->max_index-fittingLow)*xAxisMult); // Phase (leading edge of pulse) (adc clock ticks)
+
+	if(!floatingMode){ // Fix beta and gamma.
+		func->FixParameter(3, beta);
+		func->FixParameter(4, gamma);
+	}
+	else{
+		// Allow beta and gamma to float.
+		func->SetParameter(3, beta);
+		func->SetParameter(4, gamma);
+	}
+
+	// Set the fitting range.
+	func->SetRange((event_->max_index-fittingLow)*xAxisMult, (event_->max_index+fittingHigh)*xAxisMult);
+
+	return true;
+}
+
+bool TraceFitter::FitPulse(ChannelEvent *event_, const char *fitOpt/*="QR"*/){
+	if(!event_) return false;
 	
 	// "Convert" the trace into a TGraph for fitting.
 	unsigned short startIndex = event_->max_index-fittingLow;
@@ -79,19 +105,9 @@ bool TraceFitter::FitPulse(ChannelEvent *event_){
 	for(size_t graphIndex = 0; graphIndex < (fittingLow + fittingHigh); graphIndex++)
 		graph->SetPoint(graphIndex, startIndex+graphIndex, event_->adcTrace[startIndex+graphIndex]);
 
-	// Set the initial fitting conditions.
-	func->FixParameter(0, event_->baseline); // Baseline of pulse
-	func->SetParameter(1, event_->max_ADC/0.0247056); // Normalization of pulse
-	func->SetParameter(2, event_->max_index-fittingLow); // Phase (leading edge of pulse) (adc clock ticks)
-	func->FixParameter(3, beta);
-	func->FixParameter(4, gamma);
+	// Fit the graph.
+	FitPulse(graph, event_, fitOpt);
 
-	// Set the fitting range.
-	func->SetRange(event_->max_index-fittingLow, event_->max_index+fittingHigh);
-
-	// And finally, do the fitting.
-	graph->Fit(func, "QR");
-	
 	// Update the phase of the trace.
 	//event_->baseline = func->GetParameter(0);
 	event_->phase = func->GetParameter(2);
@@ -100,3 +116,30 @@ bool TraceFitter::FitPulse(ChannelEvent *event_){
 	
 	return true;
 }
+
+/// Fit a root TGraph.
+bool TraceFitter::FitPulse(TGraph *graph_, ChannelEvent *event_, const char *fitOpt/*="QR"*/){
+	if(!graph_ || !event_) return false;
+
+	// Set the initial fitting conditions.
+	SetInitialConditions(event_);
+
+	// And finally, do the fitting.
+	graph_->Fit(func, fitOpt);
+	
+	return true;
+}
+
+/// Fit a root TH1D..
+bool TraceFitter::FitPulse(TH1D *hist_, ChannelEvent *event_, const char *fitOpt/*="QR"*/){
+	if(!hist_ || !event_) return false;
+
+	// Set the initial fitting conditions.
+	SetInitialConditions(event_);
+
+	// And finally, do the fitting.
+	hist_->Fit(func, fitOpt);
+	
+	return true;
+}
+

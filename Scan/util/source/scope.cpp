@@ -3,6 +3,7 @@
 
 // PixieCore libraries
 #include "XiaData.hpp"
+#include "TraceFitter.hpp"
 
 // Local files
 #include "scope.hpp"
@@ -32,32 +33,6 @@
 #define SLEEP_WAIT 1E4 // When not in shared memory mode, length of time to wait after gSystem->ProcessEvents is called (in us).
 
 const double stdDevCoeff = 2.0 * std::sqrt(2.0 * std::log(2.0));
-
-/**The Paulauskas function is described in NIM A 737 (22), with a slight 
- * adaptation. We use a step function such that f(x < phase) = baseline.
- * In addition, we also we formulate gamma such that the gamma in the paper is
- * gamma_prime = 1 / pow(gamma, 0.25).
- *
- * The parameters are:
- * p[0] = baseline
- * p[1] = amplitude
- * p[2] = phase
- * p[3] = beta
- * p[4] = gamma
- *
- * \param[in] x X value.
- * \param[in] p Paramater values.
- *
- * \return the value of the function for the specified x value and parameters.
- */
-double PaulauskasFitFunc(double *x, double *p) {
-	//Compute the time difference between x and the phase corrected for clock ticks.
-	float diff = (x[0] - p[2])/ADC_TIME_STEP;
-	//If the difference is less than zero we return the baseline.
-	if (diff < 0 ) return p[0];
-	//Return the computed function.
-	return p[0] + p[1] * exp(-diff * p[3]) * (1 - exp(-pow(diff * p[4],4)));
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // class scopeUnpacker
@@ -155,8 +130,6 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	
 	hist = new TH2F("hist","",256,0,1,256,0,1);
 
-	SetupFunc();
-
 	gStyle->SetPalette(51);
 	
 	//Display the stats: Integral
@@ -164,6 +137,12 @@ scopeScanner::scopeScanner(int mod /*= 0*/, int chan/*=0*/) : ScanInterface() {
 	
 	//Display Fit Stats: Fit Values, Errors, and ChiSq.
 	gStyle->SetOptFit(111);
+
+	// Set beta and gamma to floating.
+	fitter.SetFloatingMode(true);
+
+	// Set the fit function x-axis multiplier to the ADC tick size.
+	fitter.SetAxisMultiplier(ADC_TIME_STEP);
 }
 
 /// Destructor.
@@ -175,14 +154,6 @@ scopeScanner::~scopeScanner(){
 	delete cfdPol3;
 	delete cfdPol2;
 	delete hist;
-	delete paulauskasFunc;
-}
-
-TF1 *scopeScanner::SetupFunc() {
-	paulauskasFunc = new TF1("paulauskas",PaulauskasFitFunc,0,1,5);
-	paulauskasFunc->SetParNames("voffset","amplitude","phase","beta","gamma");
-	
-	return paulauskasFunc;
 }
 
 void scopeScanner::ResetGraph(unsigned int size) {
@@ -276,9 +247,6 @@ void scopeScanner::Plot(){
 
 		graph->Draw("AP0");
 
-		float lowVal = (chanEvents_.front()->max_index - fitLow_) * ADC_TIME_STEP;
-		float highVal = (chanEvents_.front()->max_index + fitHigh_) * ADC_TIME_STEP;
-
 		if(performCfd_){
 			ChannelEvent *evt = chanEvents_.front();
 
@@ -314,12 +282,7 @@ void scopeScanner::Plot(){
 			}
 		}
 
-		if(performFit_){
-			paulauskasFunc->SetRange(lowVal, highVal);
-			paulauskasFunc->SetParameters(chanEvents_.front()->baseline, 0.5 * chanEvents_.front()->qdc, lowVal, 0.5, 0.1);
-			paulauskasFunc->FixParameter(0, chanEvents_.front()->baseline);
-			graph->Fit(paulauskasFunc,"QMER");
-		}
+		if(performFit_) fitter.FitPulse(graph, chanEvents_.front(), "QMER");
 	}
 	else { //For multiple events with make a 2D histogram and plot the profile on top.
 		double cfdAvg = 0.0;
@@ -382,15 +345,7 @@ void scopeScanner::Plot(){
 		prof->SetLineColor(kRed);
 		prof->SetMarkerColor(kRed);
 
-		float lowVal = prof->GetBinCenter(prof->GetMaximumBin() - fitLow_);
-		float highVal = prof->GetBinCenter(prof->GetMaximumBin() + fitHigh_);
-
-		if(performFit_){
-			paulauskasFunc->SetRange(lowVal, highVal);
-			paulauskasFunc->SetParameters(chanEvents_.front()->baseline, 0.5 * chanEvents_.front()->qdc, lowVal, 0.5, 0.2);
-			paulauskasFunc->FixParameter(0, chanEvents_.front()->baseline);
-			prof->Fit(paulauskasFunc,"QMER");
-		}
+		if(performFit_) fitter.FitPulse(prof, chanEvents_.front(), "QMER");
 
 		if(!performCfd_){
 			hist->SetStats(false);
@@ -677,7 +632,7 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 		if (args_.size() >= 1 && args_.at(0) == "off") { // Turn root fitting off.
 			if(performFit_){
 				std::cout << msgHeader << "Disabling root fitting.\n"; 
-				delete graph->GetListOfFunctions()->FindObject(paulauskasFunc->GetName());
+				delete graph->GetListOfFunctions()->FindObject(fitter.GetFunction()->GetName());
 				canvas->Update();
 				performFit_ = false;
 			}
@@ -686,6 +641,7 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 		else if (args_.size() == 2) { // Turn root fitting on.
 			fitLow_ = atoi(args_.at(0).c_str());
 			fitHigh_ = atoi(args_.at(1).c_str());
+			fitter.SetFitRange(fitLow_, fitHigh_);
 			std::cout << msgHeader << "Setting root fitting range to [" << fitLow_ << ", " << fitHigh_ << "].\n"; 
 			performFit_ = true;
 		}
@@ -754,7 +710,7 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 				graph->Clone(("trace"+nameSuffix).c_str())->Write();
 				std::cout << msgHeader << "Wrote \"trace" << nameSuffix << "\" to " << saveFile << std::endl;
 				if(performFit_){
-					paulauskasFunc->Clone(("func"+nameSuffix).c_str())->Write();
+					fitter.GetFunction()->Clone(("func"+nameSuffix).c_str())->Write();
 					std::cout << msgHeader << "Wrote \"func" << nameSuffix << "\" to " << saveFile << std::endl;				
 				}
 				if(performCfd_){
@@ -770,7 +726,7 @@ bool scopeScanner::ExtraCommands(const std::string &cmd_, std::vector<std::strin
 				prof->Clone(("prof"+nameSuffix).c_str())->Write();
 				std::cout << msgHeader << "Wrote \"hist" << nameSuffix << "\" and \"prof" << nameSuffix << "\" to " << saveFile << std::endl;
 				if(performFit_){
-					paulauskasFunc->Clone(("func"+nameSuffix).c_str())->Write();
+					fitter.GetFunction()->Clone(("func"+nameSuffix).c_str())->Write();
 					std::cout << msgHeader << "Wrote \"func" << nameSuffix << "\" to " << saveFile << std::endl;				
 				}
 				if(performCfd_){

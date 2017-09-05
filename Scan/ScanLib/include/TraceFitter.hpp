@@ -23,6 +23,8 @@
 double paulauskas(double *x, double *p);
 
 class TF1;
+class TH1D;
+class TGraph;
 
 class TraceFitter{
   protected:
@@ -31,9 +33,12 @@ class TraceFitter{
 	size_t fittingLow;
 	size_t fittingHigh;
 	
-	double adcTimeStep;
 	double beta;
 	double gamma;
+
+	double xAxisMult;
+
+	bool floatingMode;
 
   public:
 	TraceFitter();
@@ -56,8 +61,23 @@ class TraceFitter{
 	/// Set the fixed beta and gamma parameters.
 	bool SetBetaGamma(const double &beta_, const double &gamma_);
 	
+	/// Set all fit parameters to floating.
+	bool SetFloatingMode(const bool &mode_=true){ return (floatingMode = mode_); }
+
+	/// Set the x-axis multiplier constant for fitting graphs and histograms.
+	double SetAxisMultiplier(const double &mult_){ return (xAxisMult = mult_); }
+
+	/// Set the initial conditions for the fit.
+	bool SetInitialConditions(ChannelEvent *event_);
+
 	/// Fit a single trace.
-	bool FitPulse(ChannelEvent *event_);	
+	bool FitPulse(ChannelEvent *event_, const char *fitOpt="QR");
+
+	/// Fit a root TGraph.
+	bool FitPulse(TGraph *graph_, ChannelEvent *event_, const char *fitOpt="QR");
+
+	/// Fit a root TH1D..
+	bool FitPulse(TH1D *hist_, ChannelEvent *event_, const char *fitOpt="QR");
 };
 
 #endif

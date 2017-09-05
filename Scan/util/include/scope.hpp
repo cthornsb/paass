@@ -228,7 +228,7 @@ class scopeScanner : public ScanInterface {
 	
 	TApplication *rootapp; ///< Root application pointer.
 	TCanvas *canvas; ///< The main plotting canvas.
-	TGraph *graph; ///< The TGraph for plotting traces.
+	TGraph *graph;
 	TLine *cfdLine;
 	TBox *cfdBox;
 	TF1 *cfdPol3;
@@ -236,9 +236,7 @@ class scopeScanner : public ScanInterface {
 	TH2F *hist; ///<The histogram containing the waveform frequencies.
 	TProfile *prof; ///<The profile of the average histogram.
 
-	TF1 *paulauskasFunc; ///< A TF1 of the Paulauskas Function (NIM A 737 (2014) 22)
-
-	TF1 *SetupFunc();
+	TraceFitter fitter;
 
 	void ResetGraph(unsigned int size_);
 	
