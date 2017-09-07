@@ -416,7 +416,7 @@ int Unpacker::ReadSpillModule(unsigned int *buf){
   */
 bool Unpacker::IsInWhitelist(const int &mod, const int &chan){
 	if(whitelist.empty()) return false;
-	if(mod > (int)whitelist.size()) return false;
+	if(mod >= (int)whitelist.size()) return false;
 	else if(chan < 0){
 		if(whitelist.at(mod).empty()) return false;
 		return true;
