@@ -44,6 +44,7 @@ class XiaData{
 	bool cfdForceTrig; /// CFD was forced to trigger.
 	bool cfdTrigSource; /// The ADC that the CFD/FPGA synched with.
 	bool outOfRange; /// Set to true if the trace is saturated.
+	bool saturatedTrace; /// Set to true if the ADC trace is saturated.
 	
 	/// Default constructor.
 	XiaData();
@@ -153,7 +154,7 @@ class ChannelEvent : public XiaData {
 	unsigned short max_ADC; /// The uncorrected maximum ADC value of the trace.
 	unsigned short cfdIndex; /// The index in the trace just above the CFD threshold.
 	
-	float cfdPar[7]; /// Array of floats for storing cfd polynomial fits.
+	double cfdPar[7]; /// Array of floats for storing cfd polynomial fits.
 
 	float *cfdvals; ///
 	
@@ -204,8 +205,8 @@ class ChannelEvent : public XiaData {
 	virtual void print2();
 };
 
-float calculateP2(const short &x0, unsigned short *y, float *p);
+double calculateP2(const short &x0, unsigned short *y, double *p);
 
-float calculateP3(const short &x0, unsigned short *y, float *p);
+double calculateP3(const short &x0, unsigned short *y, double *p);
 
 #endif
