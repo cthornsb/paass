@@ -67,8 +67,8 @@ class XiaData{
 	/// Return true if the time of arrival for rhs is later than that of lhs.
 	static bool compareTime(XiaData *lhs, XiaData *rhs){ return (lhs->time < rhs->time); }
 	
-	/// Return true if lhs has a lower event id (mod * chan) than rhs.
-	static bool compareChannel(XiaData *lhs, XiaData *rhs){ return ((lhs->modNum*lhs->chanNum) < (rhs->modNum*rhs->chanNum)); }
+	/// Return true if lhs has a lower event id (mod*16 + chan) than rhs.
+	static bool compareChannel(XiaData *lhs, XiaData *rhs){ return ((lhs->modNum*16+lhs->chanNum) < (rhs->modNum*16+rhs->chanNum)); }
 	
 	/// Return one of the onboard qdc values.
 	unsigned int getQdcValue(const size_t &id){ return (id < 0 || id >= numQdcs ? -1 : qdcValue[id]); }
