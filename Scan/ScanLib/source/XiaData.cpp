@@ -474,7 +474,10 @@ float ChannelEvent::AnalyzePolyCFD(const float &F_/*=0.5*/){
 			calculateP2(cfdIndex-1, &adcTrace[cfdIndex-1], &cfdPar[4]);
 			
 			// Calculate the phase of the trace.
-			phase = (-cfdPar[5]+std::sqrt(cfdPar[5]*cfdPar[5] - 4*cfdPar[6]*(cfdPar[4] - threshold)))/(2*cfdPar[6]);
+			if(cfdPar[6] != 0)
+				phase = (-cfdPar[5]+std::sqrt(cfdPar[5]*cfdPar[5] - 4*cfdPar[6]*(cfdPar[4] - threshold)))/(2*cfdPar[6]);
+			else
+				phase = (threshold-cfdPar[4])/cfdPar[5];
 
 			break;
 		}
