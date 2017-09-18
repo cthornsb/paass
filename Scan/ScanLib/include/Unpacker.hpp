@@ -83,6 +83,9 @@ class Unpacker{
 
 	/// Toggle debug mode on / off.
 	bool SetDebugMode(bool state_=true){ return (debug_mode = state_); }
+
+	/// Set untriggered raw event builder mode to on or off.
+	bool SetUntriggeredMode(bool state_=true){ return (untriggeredMode = state_); }
 	
 	/// Set the width of events in pixie16 clock ticks.
 	double SetEventWidth(double width_){ return (eventWidth = width_); }
@@ -248,6 +251,7 @@ class Unpacker{
 	double rawEventStopTime;
 
 	bool useRawEventStats;
+	bool untriggeredMode;
 
 	/** Scan the event list and sort it by timestamp.
 	  * \return Nothing.

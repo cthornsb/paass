@@ -144,21 +144,14 @@ bool Unpacker::BuildRawEventB(){
 	XiaData *current_event = NULL;
 
 	if(startList.empty()){
-		if(whitelist.empty()) 
-			return false;
-
-		// Loop over all time-sorted modules.
-		int whitelistModCount = 0;
-		for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
-			if(!IsInWhitelist(whitelistModCount++, -1) || iter->empty())
-				continue;
-			
-			// Loop over the list of channels that fired in this module.
-			while(!iter->empty()){
-				current_event = iter->front();
-				mod = current_event->modNum;
-				chan = current_event->chanNum;
-				if(IsInWhitelist(current_event->modNum, current_event->chanNum)){
+		if(untriggeredMode){
+			for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
+				// Loop over the list of channels that fired in this module.
+				while(!iter->empty()){
+					current_event = iter->front();
+					mod = current_event->modNum;
+					chan = current_event->chanNum;
+					
 					if(useRawEventStats){
 						chanID.push_back(16*mod+chan);
 						chanTime.push_back(current_event->time);
@@ -170,12 +163,45 @@ bool Unpacker::BuildRawEventB(){
 	
 					// Push this channel event into the rawEvent.
 					rawEvent.push_back(current_event);
+
+					// Remove this event from the event list.
+					iter->pop_front();
 				}
-				else{ delete current_event; }
-				// Remove this event from the event list.
-				iter->pop_front();
+			}
+
+		}
+		else if(!whitelist.empty()){ 
+			// Loop over all time-sorted modules.
+			int whitelistModCount = 0;
+			for(std::vector<std::deque<XiaData*> >::iterator iter = eventList.begin(); iter != eventList.end(); iter++){
+				if(!IsInWhitelist(whitelistModCount++, -1) || iter->empty())
+					continue;
+				
+				// Loop over the list of channels that fired in this module.
+				while(!iter->empty()){
+					current_event = iter->front();
+					mod = current_event->modNum;
+					chan = current_event->chanNum;
+					if(IsInWhitelist(current_event->modNum, current_event->chanNum)){
+						if(useRawEventStats){
+							chanID.push_back(16*mod+chan);
+							chanTime.push_back(current_event->time);
+							inEvent.push_back(false);
+						}
+
+						// Update raw stats output with the new event before adding it to the raw event.
+						RawStats(current_event);
+		
+						// Push this channel event into the rawEvent.
+						rawEvent.push_back(current_event);
+					}
+					else{ delete current_event; }
+					// Remove this event from the event list.
+					iter->pop_front();
+				}
 			}
 		}
+		else{ return false; }
 
 		return !rawEvent.empty();
 	}	
@@ -443,7 +469,8 @@ Unpacker::Unpacker() :
 	startEventTime(0),
 	rawEventStartTime(0),
 	rawEventStopTime(0),
-	useRawEventStats(false)
+	useRawEventStats(false),
+	untriggeredMode(false)
 {
 	for(unsigned int i = 0; i <= MAX_PIXIE_MOD; i++){
 		for(unsigned int j = 0; j <= MAX_PIXIE_CHAN; j++){
