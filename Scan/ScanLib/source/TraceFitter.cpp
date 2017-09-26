@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "TF1.h"
 #include "TH1D.h"
 #include "TGraph.h"
