@@ -110,6 +110,9 @@ class ScanInterface{
 	
 	/// \return The name of the configuration file
 	std::string GetSetupFilename(){ return(setup_filename); }
+
+	/// \return The name of the input binary file
+	std::string GetInputFilename(){ return(input_filename); }
     
 	/// \return The name of the output file
 	std::string GetOutputFilename(){ return(output_filename); }
@@ -297,6 +300,7 @@ class ScanInterface{
 	std::string workDir; /// Linux system current working directory.
 	std::string homeDir; /// Linux user home directory.
 	std::string setup_filename; //!< Configuration file to be opened
+	std::string input_filename; //!< Name of input binary file
 	std::string output_filename; //!< Name of file to be used for output
 
 	int max_spill_size; /// Maximum size of a spill to read.

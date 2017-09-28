@@ -926,7 +926,7 @@ bool ScanInterface::Setup(int argc, char *argv[]){
 	dry_run_mode = false;
 	shm_mode = false;
 	num_spills_recvd = 0;
-	std::string input_filename = "";
+	input_filename = "";
 
 	// Add derived class options to the option list.
 	this->ArgHelp();
